@@ -152,15 +152,25 @@ body {
 
 /* Accent ON */
 :root[data-accent="on"] {
-  --accent: #3b82f6;
+  /* JS sets --accent. CSS derives the rest. */
   --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
-  --accent-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+  --accent-soft-strong: color-mix(in srgb, var(--accent) 32%, transparent);
+  --accent-ring: color-mix(in srgb, var(--accent) 55%, transparent);
+  --accent-ring-strong: color-mix(in srgb, var(--accent) 78%, transparent);
+  --accent-glow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-/* IMPORTANT: target :root when it's also .dark */
 :root.dark[data-accent="on"] {
-  --accent-soft: color-mix(in srgb, var(--accent) 28%, transparent);
-  --accent-ring: color-mix(in srgb, var(--accent) 55%, transparent);
+  --accent-soft: color-mix(in srgb, var(--accent) 26%, transparent);
+  --accent-soft-strong: color-mix(in srgb, var(--accent) 38%, transparent);
+  --accent-ring: color-mix(in srgb, var(--accent) 62%, transparent);
+  --accent-ring-strong: color-mix(in srgb, var(--accent) 82%, transparent);
+  --accent-glow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* Accent-aware card edge */
+:root[data-accent="on"] .card {
+  border-color: var(--accent-ring);
 }
 
 /* Optional: only apply accent hover when accent is enabled */

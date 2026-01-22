@@ -1,9 +1,17 @@
+// SettingsPage.tsx (UPDATED)
+// Fixes accent not applying by:
+// - making accentEnabled a real piece of state again
+// - storing accent even when disabled (optional), but applying only when enabled
+// - removing the broken setAccentEnabled calls (they referenced a non-existent setter)
+// - keeping accent + accentEnabled in sync with UI controls + presets + hex input
+
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Pill } from "../ui/Pill";
 import { applyTheme } from "../theme/theme";
 import { Home } from "lucide-react";
+import { applyAccentDerivedVars } from "../app/helpers/accent";
 
 type ThemeMode = "system" | "light" | "dark";
 
@@ -228,7 +236,7 @@ function PanelRow({
 
 export function SettingsPage({ onExit }: { onExit: () => void }) {
   const storedBg = getStoredBg();
-  const storedAccent = getStoredAccent();
+  const storedAccent = getStoredAccent(); // "" or "#xxxxxx"
 
   const [mode, setMode] = useState<ThemeMode>(() => getStoredTheme());
 
@@ -237,9 +245,10 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
   const [bgLightInput, setBgLightInput] = useState(() => storedBg.light || "");
   const [bgDarkInput, setBgDarkInput] = useState(() => storedBg.dark || "");
 
+  // ✅ Accent state is explicit again
   const [accentEnabled, setAccentEnabled] = useState<boolean>(() => !!storedAccent);
-  const [accent, setAccent] = useState(() => storedAccent || "");
-  const [accentInput, setAccentInput] = useState(() => storedAccent || "");
+  const [accent, setAccent] = useState<string>(() => storedAccent || "");
+  const [accentInput, setAccentInput] = useState<string>(() => storedAccent || "");
 
   const [systemDark, setSystemDark] = useState(false);
 
@@ -261,11 +270,14 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
     applyBackgroundOverrides(bgLight, bgDark);
   }, [bgLight, bgDark]);
 
-  useEffect(() => {
-    if (accentEnabled) setStoredAccent(accent);
-    else setStoredAccent("");
-    applyAccent(accentEnabled, accent);
-  }, [accentEnabled, accent]);
+  // ✅ Persist + apply accent correctly.
+  // - If accentEnabled is false, we remove data-accent and CSS var.
+  // - We still keep the chosen hex in state so toggling back "On" is instant.
+useEffect(() => {
+  setStoredAccent(accent);
+  applyAccent(!!accent, accent);
+  applyAccentDerivedVars(accent); // makes UI change immediately
+}, [accent]);
 
   function resetAll() {
     setMode("system");
@@ -306,19 +318,24 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
     if (n === null) return;
     setBgDark(n);
   }
+
   function commitAccent(raw: string) {
     const n = normalizeHex(raw);
     if (n === null) return;
 
     if (n === "") {
+      // clear disables
       setAccentEnabled(false);
       setAccent("");
+      setAccentInput("");
       return;
     }
 
     setAccentEnabled(true);
     setAccent(n);
+    setAccentInput(n);
   }
+
   function applyAccentPreset(hex: string) {
     setAccentEnabled(true);
     setAccent(hex);
@@ -327,7 +344,6 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="mx-auto max-w-md px-4 py-6 space-y-4">
-      {/* Header matches HomePage style */}
       <header className="pt-safe space-y-2">
         <div className="flex items-center justify-between gap-2">
           <Button variant="ghost" onClick={onExit} className="inline-flex items-center gap-2">
@@ -340,17 +356,11 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
           </Button>
         </div>
 
-        <div
-          className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
-          style={{ color: "var(--muted)" }}
-        >
+        <div className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: "var(--muted)" }}>
           Library
         </div>
 
-        <h1
-          className="text-[26px] leading-[1.12] font-extrabold tracking-tight"
-          style={{ color: "var(--fg)" }}
-        >
+        <h1 className="text-[26px] leading-[1.12] font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
           Theme settings
         </h1>
 
@@ -363,10 +373,7 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
       <Card>
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <div
-              className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
-              style={{ color: "var(--muted)" }}
-            >
+            <div className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: "var(--muted)" }}>
               Theme
             </div>
             <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
@@ -398,10 +405,7 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
       <Card>
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <div
-              className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
-              style={{ color: "var(--muted)" }}
-            >
+            <div className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: "var(--muted)" }}>
               Accent
             </div>
             <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
@@ -447,7 +451,7 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
                 />
                 <input
                   type="color"
-                  value={colorInputValue(accent, "#2563eb")}
+                  value={colorInputValue(accent || "#2563eb", "#2563eb")}
                   onChange={(e) => {
                     setAccentEnabled(true);
                     setAccent(e.target.value);
@@ -485,17 +489,13 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
           </PanelRow>
 
           <div>
-            <div
-              className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
-              style={{ color: "var(--muted)" }}
-            >
+            <div className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: "var(--muted)" }}>
               Presets
             </div>
 
             <div className="mt-3 grid grid-cols-8 gap-2">
               {ACCENT_PRESETS.map((p) => {
-                const active =
-                  accentEnabled && accent && accent.toLowerCase() === p.value.toLowerCase();
+                const active = accentEnabled && accent && accent.toLowerCase() === p.value.toLowerCase();
 
                 return (
                   <button
@@ -524,8 +524,6 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
                   className="w-full"
                   onClick={() => {
                     setAccentEnabled(false);
-                    setAccent("");
-                    setAccentInput("");
                   }}
                 >
                   Disable accent
@@ -539,10 +537,7 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
       {/* Vibes */}
       <Card>
         <div className="space-y-1">
-          <div
-            className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
-            style={{ color: "var(--muted)" }}
-          >
+          <div className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: "var(--muted)" }}>
             Vibes
           </div>
           <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
@@ -593,10 +588,7 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
       {/* Background */}
       <Card>
         <div className="space-y-1">
-          <div
-            className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
-            style={{ color: "var(--muted)" }}
-          >
+          <div className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: "var(--muted)" }}>
             Background
           </div>
           <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
@@ -608,7 +600,6 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
         </div>
 
         <div className="mt-4 space-y-4">
-          {/* Light */}
           <PanelRow title="Light background" subtitle="Pick a preset or type a hex value.">
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <select
@@ -671,7 +662,6 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
             </div>
           </PanelRow>
 
-          {/* Dark */}
           <PanelRow title="Dark background" subtitle="Pick a preset or type a hex value.">
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <select

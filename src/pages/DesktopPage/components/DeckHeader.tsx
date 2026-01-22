@@ -34,16 +34,13 @@ export function DeckHeader({
           border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
         }}
       >
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{
-            width: `${progress}%`,
-            background: isLast
-              ? "color-mix(in srgb, var(--accent, #10b981) 85%, black)"
-              : "var(--fg)",
-            opacity: isLast ? 0.95 : 0.9,
-          }}
-        />
+         {/* Progress bar */}
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${
+              isLast ? "bg-emerald-600 dark:bg-emerald-400" : "bg-slate-900 dark:bg-slate-50"
+            }`}
+            style={{ width: `${progress}%` }}
+          />
       </div>
     </header>
   );
