@@ -1,8 +1,18 @@
 import type { PropsWithChildren } from "react";
 
-export function Pill({ children }: PropsWithChildren) {
+type PillVariant = "default" | "strong";
+
+export function Pill({
+  children,
+  variant = "default",
+}: PropsWithChildren<{ variant?: PillVariant }>) {
   return (
-    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+    <span
+      className={[
+        "pill",
+        variant === "strong" ? "pill-strong" : "",
+      ].join(" ")}
+    >
       {children}
     </span>
   );

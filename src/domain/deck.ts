@@ -1,5 +1,7 @@
 import type { Category, Deck, DeckOptions, Question } from "./types";
 
+type NonAnchorCategory = Exclude<Category, "anchor">;
+
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -22,41 +24,137 @@ function pickN<T>(arr: T[], n: number) {
 }
 
 /**
- * Computes how many questions to take per category *excluding anchor*.
- * We handle anchor separately so it can never be accidentally sliced out.
+ * Prefer "fresh" items (not in recentIds). If we can't fill n, fall back to stale.
+ * Guarantees no duplicates in the returned list.
  */
-function computeMix(
-  size: 5 | 8 | 12,
+function pickNWithCooldown<T extends { id: string }>(
+  candidates: T[],
+  n: number,
+  recentIds: Set<string>
+) {
+  if (n <= 0 || candidates.length === 0) return [];
+
+  const target = Math.min(n, candidates.length);
+
+  const fresh = candidates.filter((q) => !recentIds.has(q.id));
+  const stale = candidates.filter((q) => recentIds.has(q.id));
+
+  const picked: T[] = [];
+  const pickedIds = new Set<string>();
+
+  const takeFresh = pickN(fresh, Math.min(target, fresh.length));
+  for (const q of takeFresh) {
+    if (!pickedIds.has(q.id)) {
+      picked.push(q);
+      pickedIds.add(q.id);
+    }
+  }
+
+  if (picked.length < target) {
+    const need = target - picked.length;
+    const staleRemaining = stale.filter((q) => !pickedIds.has(q.id));
+    const takeStale = pickN(staleRemaining, Math.min(need, staleRemaining.length));
+    for (const q of takeStale) {
+      if (!pickedIds.has(q.id)) {
+        picked.push(q);
+        pickedIds.add(q.id);
+      }
+    }
+  }
+
+  return picked.slice(0, target);
+}
+
+// Keep this in sync with your Category union
+const EMPTY_MIX: Record<Category, number> = {
+  intent: 0,
+  accountability: 0,
+  communication: 0,
+  regulation: 0,
+  money: 0,
+  repair: 0,
+  values: 0,
+  humor: 0,
+
+  boundaries: 0,
+  co_living: 0,
+  trust: 0,
+  intimacy: 0,
+
+  parenting_family: 0,
+  breakup_exit: 0,
+
+  anchor: 0,
+};
+
+const PRIORITY_ORDER: NonAnchorCategory[] = [
+  // core
+  "intent",
+  "values",
+  "communication",
+  "accountability",
+  "regulation",
+  "repair",
+  "money",
+  "humor",
+  // deep
+  "trust",
+  "boundaries",
+  "co_living",
+  "intimacy",
+  "parenting_family",
+  "breakup_exit",
+];
+
+function clampInt(n: number, min: number, max: number) {
+  const x = Math.floor(Number.isFinite(n) ? n : min);
+  return Math.max(min, Math.min(max, x));
+}
+
+/**
+ * Your UI can allow any number; we clamp to keep UX sane.
+ * You can adjust these bounds.
+ */
+function normalizeSize(size: number) {
+  return clampInt(size, 3, 50);
+}
+
+/**
+ * For custom sizes, we choose a baseline profile based on “closest preset”
+ * and then distribute extra slots across core categories first.
+ */
+function baselineForSize(size: number) {
+  if (size <= 6) return 5;
+  if (size <= 10) return 8;
+  return 12;
+}
+
+/**
+ * Default mix when user did NOT pick categories.
+ * Works for ANY size.
+ * Anchor handled separately so it can never be accidentally sliced out.
+ */
+function computeDefaultMix(
+  sizeInput: number,
   weights?: Partial<Record<Category, number>>,
   reservedSlots = 0
 ) {
-  // `reservedSlots` is how many slots we’ve already committed (e.g., anchor)
+  const size = normalizeSize(sizeInput);
   const target = Math.max(0, size - reservedSlots);
+  const base: Record<Category, number> = { ...EMPTY_MIX };
 
-  // Default distribution excluding anchor
-  const base: Record<Category, number> = {
-    intent: 0,
-    accountability: 0,
-    communication: 0,
-    regulation: 0,
-    money: 0,
-    anchor: 0, // ignored here
-    repair: 0,
-    values: 0,
-    humor: 0,
-  };
+  if (target === 0) return base;
 
-  // Defaults designed to sum to `target`
-  if (size === 5) {
-    // No anchor, no humor by default for the smallest deck
+  // start from a baseline profile (5/8/12) then “grow” it
+  const baseline = baselineForSize(size);
+
+  if (baseline === 5) {
     base.intent = 1;
     base.accountability = 1;
     base.communication = 1;
     base.regulation = 1;
     base.money = 1;
-  } else if (size === 8) {
-    // Add a touch of humor for levity
-    // (Values can still appear via swap/fill/weights)
+  } else if (baseline === 8) {
     base.intent = 2;
     base.accountability = 1;
     base.communication = 1;
@@ -65,8 +163,6 @@ function computeMix(
     base.repair = 1;
     base.humor = 1;
   } else {
-    // size === 12
-    // Broader spread with 1 humor by default
     base.intent = 2;
     base.accountability = 2;
     base.communication = 2;
@@ -77,56 +173,126 @@ function computeMix(
     base.humor = 1;
   }
 
-  // If we reserved slots (e.g., anchor), reduce the base totals to match target.
-  // We reduce from categories with higher counts first (and never go below 0).
-  const totalBase = Object.entries(base)
+  // If baseline overshoots (possible with very small target), reduce.
+  let total = Object.entries(base)
     .filter(([k]) => k !== "anchor")
     .reduce((s, [, v]) => s + v, 0);
 
-  let over = Math.max(0, totalBase - target);
+  let over = Math.max(0, total - target);
   if (over > 0) {
-    const reductionOrder: Category[] = [
-      "intent",
-      "accountability",
-      "communication",
-      "regulation",
+    const reductionOrder: NonAnchorCategory[] = [
+      "humor",
       "values",
       "repair",
-      "humor",
       "money",
+      "regulation",
+      "communication",
+      "accountability",
+      "intent",
+      "trust",
+      "boundaries",
+      "co_living",
+      "intimacy",
+      "parenting_family",
+      "breakup_exit",
     ];
 
     let i = 0;
-    while (over > 0 && i < 200) {
+    while (over > 0 && i < 600) {
       const c = reductionOrder[i % reductionOrder.length];
       if (base[c] > 0) {
         base[c] -= 1;
         over -= 1;
       }
       i++;
-      // if everything hit 0, bail (shouldn’t happen with sane targets)
       if (reductionOrder.every((k) => base[k] === 0)) break;
     }
   }
 
-  if (weights) {
-    // redistribute remaining slots toward weighted categories, excluding anchor
-    const current = Object.entries(base)
-      .filter(([k]) => k !== "anchor")
-      .reduce((s, [, v]) => s + v, 0);
+  // If baseline undershoots (common for custom sizes), add extras in priority order.
+  total = Object.entries(base)
+    .filter(([k]) => k !== "anchor")
+    .reduce((s, [, v]) => s + v, 0);
 
-    let remaining = Math.max(0, target - current);
-
-    const sorted = Object.entries(weights)
-      .filter(([k]) => k !== "anchor")
-      .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
-      .map(([k]) => k as Category);
-
+  let remaining = Math.max(0, target - total);
+  if (remaining > 0) {
+    // grow core first, then deep
     let i = 0;
-    while (remaining > 0 && sorted.length > 0) {
-      base[sorted[i % sorted.length]] += 1;
+    while (remaining > 0 && i < 2000) {
+      const c = PRIORITY_ORDER[i % PRIORITY_ORDER.length];
+      base[c] += 1;
+      remaining -= 1;
       i++;
-      remaining--;
+    }
+  }
+
+  // Optional: weights as gentle nudges
+  if (weights) {
+    const allowed: NonAnchorCategory[] = [...PRIORITY_ORDER];
+    const ranked = [...allowed]
+      .sort((a, b) => (weights[b] ?? 0) - (weights[a] ?? 0))
+      .filter((c) => (weights[c] ?? 0) > 0);
+
+    if (ranked.length) {
+      const nudges = Math.min(4, Math.floor(target / 4));
+      for (let i = 0; i < nudges; i++) {
+        const to = ranked[i % ranked.length];
+        const from = [...PRIORITY_ORDER].reverse().find((c) => c !== to && base[c] > 0);
+        if (from && from !== to) {
+          base[from] -= 1;
+          base[to] += 1;
+        }
+      }
+    }
+  }
+
+  return base;
+}
+
+/**
+ * When user picks categories: build a mix only across those categories (excluding anchor).
+ * Works for ANY size.
+ */
+function computeSelectedMix(
+  sizeInput: number,
+  allowedCategories: Category[],
+  weights?: Partial<Record<Category, number>>,
+  reservedSlots = 0
+) {
+  const size = normalizeSize(sizeInput);
+  const target = Math.max(0, size - reservedSlots);
+  const base: Record<Category, number> = { ...EMPTY_MIX };
+
+  const allowed: NonAnchorCategory[] = Array.from(
+    new Set(allowedCategories.filter((c): c is NonAnchorCategory => c !== "anchor"))
+  );
+
+  if (allowed.length === 0 || target === 0) return base;
+
+  const ordered: NonAnchorCategory[] = PRIORITY_ORDER.filter((c) => allowed.includes(c));
+  const cycle: NonAnchorCategory[] = ordered.length ? ordered : allowed;
+
+  // simple, fair distribution
+  for (let i = 0; i < target; i++) {
+    base[cycle[i % cycle.length]] += 1;
+  }
+
+  // gentle nudges via weights (optional)
+  if (weights) {
+    const ranked = [...allowed]
+      .sort((a, b) => (weights[b] ?? 0) - (weights[a] ?? 0))
+      .filter((c) => (weights[c] ?? 0) > 0);
+
+    if (ranked.length) {
+      const nudges = Math.min(4, Math.floor(target / 4));
+      for (let i = 0; i < nudges; i++) {
+        const to = ranked[i % ranked.length];
+        const from = [...cycle].reverse().find((c) => c !== to && base[c] > 0);
+        if (from && from !== to) {
+          base[from] -= 1;
+          base[to] += 1;
+        }
+      }
     }
   }
 
@@ -134,22 +300,44 @@ function computeMix(
 }
 
 export function generateDeck(all: Question[], options: DeckOptions): Deck {
+  const recent = new Set<string>(options.recentQuestionIds ?? []);
+  const selectedCategories = options.categories ?? [];
+
+  const size = normalizeSize(options.size);
+
   const toneOk = (q: Question) =>
     options.tone === "mixed" ? true : q.tone === options.tone || q.tone === "neutral";
 
-  const tagOk = (q: Question) =>
-    !q.tags.some((t) => options.excludeTags.includes(t));
+  const tagOk = (q: Question) => !q.tags.some((t) => options.excludeTags.includes(t));
 
-  const pool = all.filter((q) => toneOk(q) && tagOk(q));
+  // Anchor: separate, never blocked by category selection
+  const includeAnchor = size >= 8;
+  const anchorCandidates = includeAnchor
+    ? all.filter((q) => toneOk(q) && tagOk(q) && q.category === "anchor")
+    : [];
 
-  // Anchor: at most 1, only if deck >= 8, and only if we actually have anchors in pool
-  const includeAnchor = options.size >= 8;
-  const anchorCandidate = includeAnchor ? pool.filter((q) => q.category === "anchor") : [];
-  const anchor = anchorCandidate.length ? pickOne(anchorCandidate) : undefined;
+  const anchorFresh = anchorCandidates.filter((q) => !recent.has(q.id));
+  const anchor =
+    anchorFresh.length
+      ? pickOne(anchorFresh)
+      : anchorCandidates.length
+        ? pickOne(anchorCandidates)
+        : undefined;
 
-  // Reserve 1 slot if we are including an anchor so it never gets sliced out
   const reserved = anchor ? 1 : 0;
-  const mix = computeMix(options.size, options.weights, reserved);
+
+  // Non-anchor pool, category constrained
+  const categoryOk = (q: Question) => {
+    if (q.category === "anchor") return false;
+    if (!selectedCategories.length) return true;
+    return selectedCategories.includes(q.category);
+  };
+
+  const pool = all.filter((q) => toneOk(q) && tagOk(q) && categoryOk(q));
+
+  const mix = selectedCategories.length
+    ? computeSelectedMix(size, selectedCategories, options.weights, reserved)
+    : computeDefaultMix(size, options.weights, reserved);
 
   const chosen: Question[] = [];
   const already = new Set<string>();
@@ -160,33 +348,28 @@ export function generateDeck(all: Question[], options: DeckOptions): Deck {
   }
 
   for (const [cat, n] of Object.entries(mix) as [Category, number][]) {
-    if (cat === "anchor") continue;
-    if (n <= 0) continue;
-
+    if (cat === "anchor" || n <= 0) continue;
     const candidates = pool.filter((q) => q.category === cat && !already.has(q.id));
-    const picked = pickN(candidates, n);
-    picked.forEach((q) => already.add(q.id));
+    const picked = pickNWithCooldown(candidates, n, recent);
+    for (const q of picked) already.add(q.id);
     chosen.push(...picked);
   }
 
-  // Fill to exact size from any non-anchor
-  const targetSize = options.size;
-  const remainingSlots = Math.max(0, targetSize - chosen.length);
+  const remainingSlots = Math.max(0, size - chosen.length);
+  const fillCandidates = pool.filter((q) => !already.has(q.id));
+  const fillPicked = pickNWithCooldown(fillCandidates, remainingSlots, recent);
 
-  const fill = shuffle(
-    pool.filter((q) => q.category !== "anchor" && !already.has(q.id))
-  ).slice(0, remainingSlots);
-
-  const questions = shuffle([...chosen, ...fill]).slice(0, targetSize);
+  const questions = shuffle([...chosen, ...fillPicked]).slice(0, size);
 
   return {
     id: uid(),
     createdAt: Date.now(),
-    options,
+    // store normalized size back into options to keep everything consistent
+    options: { ...options, size },
     questions,
     index: 0,
     savedQuestionIds: [],
-    swapsByIndex: {}, // ✅ NEW: supports swap-limit UX
+    swapsByIndex: {},
   };
 }
 
@@ -195,17 +378,39 @@ export function swapQuestion(deck: Deck, all: Question[]): Deck {
   if (!current) return deck;
 
   const excludeIds = new Set(deck.questions.map((q) => q.id));
-  const candidates = all.filter(
-    (q) =>
-      q.category === current.category &&
-      q.intensity === current.intensity &&
-      !excludeIds.has(q.id) &&
-      !q.tags.some((t) => deck.options.excludeTags.includes(t))
+  const recent = new Set<string>(deck.options.recentQuestionIds ?? []);
+  const selectedCategories = deck.options.categories ?? [];
+
+  const toneOk = (q: Question) =>
+    deck.options.tone === "mixed"
+      ? true
+      : q.tone === deck.options.tone || q.tone === "neutral";
+
+  const tagOk = (q: Question) => !q.tags.some((t) => deck.options.excludeTags.includes(t));
+
+  const categoryOk = (q: Question) => {
+    if (q.category === "anchor") return false;
+    if (!selectedCategories.length) return true;
+    return selectedCategories.includes(q.category);
+  };
+
+  const baseOk = (q: Question) => toneOk(q) && tagOk(q) && categoryOk(q) && !excludeIds.has(q.id);
+
+  const tier1 = all.filter(
+    (q) => baseOk(q) && q.category === current.category && q.intensity === current.intensity
   );
+  const tier2 = all.filter((q) => baseOk(q) && q.category === current.category);
+  const tier3 = all.filter((q) => baseOk(q));
 
-  if (candidates.length === 0) return deck;
+  const pickPreferFresh = (arr: Question[]) => {
+    if (!arr.length) return null;
+    const fresh = arr.filter((q) => !recent.has(q.id));
+    return pickOne(fresh.length ? fresh : arr);
+  };
 
-  const replacement = candidates[Math.floor(Math.random() * candidates.length)];
+  const replacement = pickPreferFresh(tier1) ?? pickPreferFresh(tier2) ?? pickPreferFresh(tier3);
+  if (!replacement) return deck;
+
   const questions = [...deck.questions];
   questions[deck.index] = replacement;
 

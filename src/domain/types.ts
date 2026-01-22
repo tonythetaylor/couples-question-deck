@@ -4,10 +4,16 @@ export type Category =
   | "communication"
   | "regulation"
   | "money"
-  | "anchor"
   | "repair"
   | "values"
-  | "humor";
+  | "humor"
+  | "anchor"
+  | "boundaries"
+  | "co_living"
+  | "trust"
+  | "intimacy"
+  | "parenting_family"
+  | "breakup_exit";
 
 export type Tone = "gentle" | "neutral" | "direct";
 
@@ -22,10 +28,12 @@ export type Question = {
 };
 
 export type DeckOptions = {
-  size: 5 | 8 | 12;
+  size: number;
   tone: Tone | "mixed";
   excludeTags: string[];
   weights?: Partial<Record<Category, number>>; // optional
+  recentQuestionIds?: string[];
+  categories?: Category[]; // NEW
 };
 
 export type Deck = {
