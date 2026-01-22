@@ -6,6 +6,7 @@ import { SettingsPage } from "../pages/SettingsPage";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { applyTheme } from "../theme/theme";
+import { Bookmark, Palette } from "lucide-react";
 
 type Route = "home" | "deck" | "saved" | "settings";
 type ThemeMode = "system" | "light" | "dark";
@@ -49,23 +50,20 @@ function applyAccent(accent: string) {
 export default function App() {
   const [route, setRoute] = useState<Route>("home");
 
-  // 🔑 Apply theme + bg + accent ONCE
   useEffect(() => {
-    // Theme
     applyTheme(getStoredTheme());
 
-    // Background overrides
     applyBackgroundOverrides(
       localStorage.getItem(BG_LIGHT_KEY) ?? "",
       localStorage.getItem(BG_DARK_KEY) ?? ""
     );
 
-    // Accent (optional)
     applyAccent(localStorage.getItem(ACCENT_KEY) ?? "");
+    document.body.style.background = "var(--bg)";
   }, []);
 
   return (
-    <div className="min-h-screen pt-safe relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden" style={{ background: "var(--bg)" }}>
       {/* Background enhancer layer */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div
@@ -80,7 +78,6 @@ export default function App() {
           }}
         />
 
-        {/* Subtle film grain */}
         <div
           className="absolute inset-0"
           style={{
@@ -92,47 +89,92 @@ export default function App() {
         />
       </div>
 
-      {route === "home" && (
-        <div className="space-y-4">
-          <HomePage onStart={() => setRoute("deck")} />
+      {/* Content respects safe area */}
+      <div className="pt-safe">
+        {route === "home" && (
+          <div className="space-y-4">
+            <HomePage onStart={() => setRoute("deck")} />
 
-          <div className="mx-auto max-w-md px-4 pb-10">
-            <Card>
-              <div
-                className="text-sm font-extrabold tracking-tight"
-                style={{ color: "var(--fg)" }}
-              >
-                Library
-              </div>
+            <div className="mx-auto max-w-md px-4 pb-10">
+              <Card>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div
+                      className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      Library
+                    </div>
 
-              <p
-                className="mt-2 text-sm leading-relaxed"
-                style={{ color: "var(--muted)" }}
-              >
-                Keep what works. Save questions worth revisiting.
-              </p>
+                    <div
+                      className="text-sm font-extrabold tracking-tight"
+                      style={{ color: "var(--fg)" }}
+                    >
+                      Saved + Theme
+                    </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button className="w-full" onClick={() => setRoute("saved")}>
-                  View saved
-                </Button>
+                    <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+                      Saved cards live here. Theme settings live here too.
+                    </div>
+                  </div>
 
-                <Button
-                  className="w-full"
-                  variant="ghost"
-                  onClick={() => setRoute("settings")}
-                >
-                  Settings
-                </Button>
-              </div>
-            </Card>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
+                      style={{
+                        background: "color-mix(in srgb, var(--fg) 3%, transparent)",
+                        border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                        color: "var(--fg)",
+                      }}
+                      aria-hidden
+                      title="Saved"
+                    >
+                      <Bookmark size={16} className="opacity-80" />
+                    </span>
+
+                    <span
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
+                      style={{
+                        background: "color-mix(in srgb, var(--fg) 3%, transparent)",
+                        border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                        color: "var(--fg)",
+                      }}
+                      aria-hidden
+                      title="Theme"
+                    >
+                      <Palette size={16} className="opacity-80" />
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Button className="w-full" onClick={() => setRoute("saved")}>
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Bookmark size={16} className="opacity-90" />
+                      Saved cards
+                    </span>
+                  </Button>
+
+                  <Button className="w-full" variant="ghost" onClick={() => setRoute("settings")}>
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Palette size={16} className="opacity-90" />
+                      Theme settings
+                    </span>
+                  </Button>
+                </div>
+
+                <div className="mt-3 text-[11px]" style={{ color: "var(--muted)" }}>
+                  One place for what you keep and how it looks.
+                </div>
+              </Card>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {route === "deck" && <DeckPage onExit={() => setRoute("home")} />}
-      {route === "saved" && <SavedPage onExit={() => setRoute("home")} />}
-      {route === "settings" && <SettingsPage onExit={() => setRoute("home")} />}
+        {route === "deck" && <DeckPage onExit={() => setRoute("home")} />}
+        {route === "saved" && <SavedPage onExit={() => setRoute("home")} />}
+        {route === "settings" && <SettingsPage onExit={() => setRoute("home")} />}
+      </div>
     </div>
   );
 }

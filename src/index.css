@@ -115,7 +115,7 @@
 
   --toggle-thumb-off: rgba(255, 255, 255, 0.14);
   --toggle-thumb-on: var(--btn-fg);
-  
+
   color-scheme: dark;
 }
 
@@ -123,6 +123,7 @@
    Base layout
    ------------------------- */
 .pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
 html, body { height: 100%; }
 
