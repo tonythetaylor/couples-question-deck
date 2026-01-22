@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
