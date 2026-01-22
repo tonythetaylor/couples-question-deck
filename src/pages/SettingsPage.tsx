@@ -86,7 +86,6 @@ function normalizeHex(raw: string): "" | string | null {
   return isValidHex(withHash) ? withHash : null;
 }
 
-/** Accent storage + application */
 function getStoredAccent() {
   const v = localStorage.getItem(ACCENT_KEY) ?? "";
   const n = normalizeHex(v);
@@ -114,37 +113,118 @@ function applyAccent(accentEnabled: boolean, accent: string) {
   }
 }
 
-/** For color input values, always return a valid hex */
 function colorInputValue(hexOrEmpty: string, fallback: string) {
   const n = normalizeHex(hexOrEmpty);
   if (n && n !== "") return n;
   return fallback;
 }
 
-function subscribeToMediaQuery(
-  query: string,
-  onChange: (matches: boolean) => void,
-) {
+function subscribeToMediaQuery(query: string, onChange: (matches: boolean) => void) {
   const mql = window.matchMedia?.(query);
   if (!mql) return () => {};
 
   const handler = (e: MediaQueryListEvent) => onChange(e.matches);
-
-  // set initial
   onChange(mql.matches);
 
-  // Modern browsers
   if (typeof mql.addEventListener === "function") {
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
   }
 
-  // Legacy Safari fallback (deprecated, but only used when needed)
   const legacyHandler = (e: MediaQueryList) => onChange(e.matches);
-  // TS deprecation annoyance: cast to "any" in the fallback only
   (mql as any).addListener(legacyHandler);
   return () => (mql as any).removeListener(legacyHandler);
 }
+
+/* ---------- small UI helpers to match HomePage feel ---------- */
+
+function Seg({
+  items,
+  value,
+  onChange,
+  cols,
+  small = false,
+}: {
+  items: Array<{ id: string; label: string }>;
+  value: string;
+  onChange: (id: string) => void;
+  cols: number;
+  small?: boolean;
+}) {
+  return (
+    <div
+      className={`grid gap-1 rounded-2xl p-1`}
+      style={{
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        background: "var(--seg-surface)",
+        border: "1px solid var(--seg-border)",
+      }}
+    >
+      {items.map((it) => {
+        const selected = value === it.id;
+        return (
+          <button
+            key={it.id}
+            type="button"
+            onClick={() => onChange(it.id)}
+            aria-pressed={selected}
+            className={`${small ? "h-9 text-[12px]" : "h-10 text-sm"} rounded-xl font-extrabold transition`}
+            style={{
+              background: selected ? "var(--seg-selected-bg)" : "transparent",
+              color: selected ? "var(--seg-selected-fg)" : "var(--fg)",
+              boxShadow: selected
+                ? `inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--glass-inner)`
+                : "none",
+              opacity: selected ? 1 : 0.9,
+            }}
+          >
+            {it.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PanelRow({
+  title,
+  subtitle,
+  right,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-2xl px-4 py-3"
+      style={{
+        background: "color-mix(in srgb, var(--fg) 3%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--fg) 8%, transparent)",
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5 min-w-0">
+          <div className="text-sm font-extrabold" style={{ color: "var(--fg)" }}>
+            {title}
+          </div>
+          {subtitle ? (
+            <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+              {subtitle}
+            </div>
+          ) : null}
+        </div>
+        {right ? <div className="shrink-0">{right}</div> : null}
+      </div>
+
+      {children ? <div className="mt-3">{children}</div> : null}
+    </div>
+  );
+}
+
+/* ---------- Page ---------- */
 
 export function SettingsPage({ onExit }: { onExit: () => void }) {
   const storedBg = getStoredBg();
@@ -157,17 +237,15 @@ export function SettingsPage({ onExit }: { onExit: () => void }) {
   const [bgLightInput, setBgLightInput] = useState(() => storedBg.light || "");
   const [bgDarkInput, setBgDarkInput] = useState(() => storedBg.dark || "");
 
-  // Accent: explicit enable switch + value
   const [accentEnabled, setAccentEnabled] = useState<boolean>(() => !!storedAccent);
   const [accent, setAccent] = useState(() => storedAccent || "");
   const [accentInput, setAccentInput] = useState(() => storedAccent || "");
 
-  // Track system theme live (so resolved updates when OS flips)
-const [systemDark, setSystemDark] = useState(false);
+  const [systemDark, setSystemDark] = useState(false);
 
-useEffect(() => {
-  return subscribeToMediaQuery("(prefers-color-scheme: dark)", setSystemDark);
-}, []);
+  useEffect(() => {
+    return subscribeToMediaQuery("(prefers-color-scheme: dark)", setSystemDark);
+  }, []);
 
   const resolved = useMemo(() => {
     return mode === "dark" || (mode === "system" && systemDark) ? "dark" : "light";
@@ -184,10 +262,8 @@ useEffect(() => {
   }, [bgLight, bgDark]);
 
   useEffect(() => {
-    // Persist only when enabled; disabled means “no accent stored”
     if (accentEnabled) setStoredAccent(accent);
     else setStoredAccent("");
-
     applyAccent(accentEnabled, accent);
   }, [accentEnabled, accent]);
 
@@ -230,387 +306,437 @@ useEffect(() => {
     if (n === null) return;
     setBgDark(n);
   }
-
   function commitAccent(raw: string) {
     const n = normalizeHex(raw);
     if (n === null) return;
 
-    // Clearing disables accent
     if (n === "") {
       setAccentEnabled(false);
       setAccent("");
       return;
     }
 
-    // Setting any valid hex enables accent
     setAccentEnabled(true);
     setAccent(n);
   }
-
   function applyAccentPreset(hex: string) {
     setAccentEnabled(true);
     setAccent(hex);
     setAccentInput(hex);
   }
 
-  const panelRow =
-    "glass glass-strong ring-1 rounded-2xl px-3 py-3 flex items-center justify-between gap-3";
-  const label = "text-[11px] font-extrabold tracking-tight";
-
   return (
     <div className="mx-auto max-w-md px-4 py-6 space-y-4">
-      <header className="flex items-center justify-between pt-safe">
-        <Button variant="ghost" onClick={onExit} className="inline-flex items-center gap-2">
-          <Home className="h-4 w-4" />
-          Home
-        </Button>
-        <Button variant="ghost" onClick={resetAll}>
-          Reset
-        </Button>
+      {/* Header matches HomePage style */}
+      <header className="pt-safe space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="ghost" onClick={onExit} className="inline-flex items-center gap-2">
+            <Home className="h-4 w-4" />
+            Home
+          </Button>
+
+          <Button variant="ghost" onClick={resetAll}>
+            Reset
+          </Button>
+        </div>
+
+        <div
+          className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+          style={{ color: "var(--muted)" }}
+        >
+          Library
+        </div>
+
+        <h1
+          className="text-[26px] leading-[1.12] font-extrabold tracking-tight"
+          style={{ color: "var(--fg)" }}
+        >
+          Theme settings
+        </h1>
+
+        <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
+          Tune the vibe. Everything is saved locally on this device.
+        </p>
       </header>
 
+      {/* Theme */}
       <Card>
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
-            Settings
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <div
+              className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+              style={{ color: "var(--muted)" }}
+            >
+              Theme
+            </div>
+            <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
+              Light, dark, or system
+            </div>
+            <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+              Current: <span style={{ color: "var(--fg)", fontWeight: 800 }}>{resolved}</span>
+            </div>
           </div>
+
           <Pill variant="strong">{resolved}</Pill>
         </div>
 
-        <div className="mt-4 space-y-6">
-          {/* Theme */}
-          <section className="space-y-2">
-            <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
-              Theme
-            </div>
+        <div className="mt-4">
+          <Seg
+            cols={3}
+            items={[
+              { id: "system", label: "System" },
+              { id: "light", label: "Light" },
+              { id: "dark", label: "Dark" },
+            ]}
+            value={mode}
+            onChange={(id) => setMode(id as ThemeMode)}
+          />
+        </div>
+      </Card>
 
+      {/* Accent */}
+      <Card>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
             <div
-              className="grid grid-cols-3 gap-1 rounded-2xl p-1"
-              style={{
-                background: "color-mix(in srgb, var(--fg) 4%, transparent)",
-                border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
-              }}
+              className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+              style={{ color: "var(--muted)" }}
             >
-              {(["system", "light", "dark"] as const).map((m) => {
-                const selected = mode === m;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMode(m)}
-                    aria-pressed={selected}
-                    className="h-10 rounded-xl text-sm font-extrabold transition"
-                    style={{
-                      background: selected ? "var(--btn)" : "transparent",
-                      color: selected ? "var(--btn-fg)" : "var(--fg)",
-                      boxShadow: selected
-                        ? `inset 0 1px 0 var(--glass-highlight),
-                           inset 0 -1px 0 var(--glass-inner),
-                           0 8px 18px rgba(2,6,23,0.10)`
-                        : "none",
-                    }}
-                  >
-                    {m[0].toUpperCase() + m.slice(1)}
-                  </button>
-                );
-              })}
+              Accent
             </div>
-          </section>
-
-          {/* Accent */}
-          <section className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
-                Accent
-              </div>
-              <button
-                type="button"
-                className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
-                style={{ color: "var(--muted)" }}
-                onClick={() => setAccentEnabled((v) => !v)}
-                aria-pressed={accentEnabled}
-              >
-                {accentEnabled ? "On" : "Off"}
-              </button>
+            <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
+              Optional highlight color
             </div>
+            <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+              Turn it on when you want extra contrast.
+            </div>
+          </div>
 
-            {/* Current accent row */}
-            <div className={panelRow} style={{ borderColor: "var(--glass-border)", backgroundColor: "var(--glass-bg-strong)" }}>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex flex-col min-w-0">
-                  <span className={label} style={{ color: "var(--muted)" }}>
-                    Current
-                  </span>
-                  <span className="text-sm font-extrabold truncate" style={{ color: "var(--fg)" }}>
-                    {accentEnabled && accent ? accent : "Default (off)"}
-                  </span>
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={() => setAccentEnabled((v) => !v)}
+            aria-pressed={accentEnabled}
+            className="h-9 rounded-xl px-3 text-[12px] font-extrabold transition"
+            style={{
+              background: accentEnabled ? "var(--seg-selected-bg)" : "var(--seg-surface)",
+              color: accentEnabled ? "var(--seg-selected-fg)" : "var(--fg)",
+              border: `1px solid var(--seg-border)`,
+              boxShadow: accentEnabled
+                ? `inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--glass-inner)`
+                : "none",
+            }}
+          >
+            {accentEnabled ? "On" : "Off"}
+          </button>
+        </div>
 
+        <div className="mt-4 space-y-3">
+          <PanelRow
+            title="Current accent"
+            subtitle={accentEnabled && accent ? accent : "Default (accent off)"}
+            right={
               <div className="flex items-center gap-2">
                 <span
-                  className="h-6 w-6 rounded-xl ring-1"
+                  className="h-6 w-6 rounded-xl"
                   style={{
-                    background: accentEnabled ? colorInputValue(accent, "#3b82f6") : "transparent",
-                    borderColor: "var(--glass-border)" as any,
+                    background: accentEnabled ? colorInputValue(accent, "#2563eb") : "transparent",
+                    border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
                   }}
                   aria-hidden
                   title="Accent swatch"
                 />
-
                 <input
                   type="color"
-                  value={colorInputValue(accent, "#3b82f6")}
+                  value={colorInputValue(accent, "#2563eb")}
                   onChange={(e) => {
                     setAccentEnabled(true);
                     setAccent(e.target.value);
                     setAccentInput(e.target.value);
                   }}
-                  className="h-10 w-12 rounded-xl ring-1"
-                  style={{ borderColor: "var(--glass-border)", background: "transparent" }}
+                  className="h-9 w-12 rounded-xl"
+                  style={{
+                    border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+                    background: "transparent",
+                  }}
                   aria-label="Pick accent color"
                 />
               </div>
+            }
+          />
+
+          <PanelRow title="Hex" subtitle="Press Enter to apply. Clear to disable.">
+            <input
+              value={accentInput}
+              onChange={(e) => setAccentInput(e.target.value)}
+              onBlur={() => commitAccent(accentInput)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitAccent(accentInput);
+              }}
+              placeholder="#2563eb"
+              className="w-full bg-transparent outline-none text-sm font-extrabold"
+              style={{
+                color: "var(--fg)",
+                borderRadius: 14,
+                padding: "10px 12px",
+                border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+              }}
+              aria-label="Accent hex"
+            />
+          </PanelRow>
+
+          <div>
+            <div
+              className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+              style={{ color: "var(--muted)" }}
+            >
+              Presets
             </div>
 
-            {/* Hex input row */}
-            <div className={panelRow} style={{ borderColor: "var(--glass-border)", backgroundColor: "var(--glass-bg)" }}>
-              <div className="flex flex-col">
-                <span className={label} style={{ color: "var(--muted)" }}>
-                  Hex
-                </span>
-                <span className="text-[11px]" style={{ color: "var(--muted)" }}>
-                  Press Enter to apply, clear to disable
+            <div className="mt-3 grid grid-cols-8 gap-2">
+              {ACCENT_PRESETS.map((p) => {
+                const active =
+                  accentEnabled && accent && accent.toLowerCase() === p.value.toLowerCase();
+
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyAccentPreset(p.value)}
+                    className="h-9 w-9 rounded-xl transition-transform active:scale-[0.98]"
+                    style={{
+                      background: p.value,
+                      border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+                      boxShadow: active
+                        ? `0 0 0 2px color-mix(in srgb, var(--fg) 16%, transparent), 0 10px 22px rgba(0,0,0,0.12)`
+                        : `inset 0 1px 0 rgba(255,255,255,0.18)`,
+                    }}
+                    aria-label={`Set accent to ${p.label}`}
+                    title={p.label}
+                  />
+                );
+              })}
+            </div>
+
+            {accentEnabled ? (
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setAccentEnabled(false);
+                    setAccent("");
+                    setAccentInput("");
+                  }}
+                >
+                  Disable accent
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </Card>
+
+      {/* Vibes */}
+      <Card>
+        <div className="space-y-1">
+          <div
+            className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+            style={{ color: "var(--muted)" }}
+          >
+            Vibes
+          </div>
+          <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
+            One-tap background sets
+          </div>
+          <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+            Applies both light and dark backgrounds.
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {VIBE_PRESETS.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => applyVibe(v)}
+              className="rounded-2xl px-3 py-3 text-left font-extrabold transition"
+              style={{
+                background: "color-mix(in srgb, var(--fg) 3%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--fg) 8%, transparent)",
+                color: "var(--fg)",
+              }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="truncate text-sm">{v.label}</span>
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-4 w-4 rounded-full"
+                    style={{
+                      background: v.light,
+                      border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+                    }}
+                  />
+                  <span
+                    className="h-4 w-4 rounded-full"
+                    style={{
+                      background: v.dark,
+                      border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+                    }}
+                  />
                 </span>
               </div>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {/* Background */}
+      <Card>
+        <div className="space-y-1">
+          <div
+            className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+            style={{ color: "var(--muted)" }}
+          >
+            Background
+          </div>
+          <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
+            Light + dark overrides
+          </div>
+          <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+            Optional. Leave “Default” to use the built-in theme background.
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {/* Light */}
+          <PanelRow title="Light background" subtitle="Pick a preset or type a hex value.">
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <select
+                value={bgLight}
+                onChange={(e) => {
+                  setBgLight(e.target.value);
+                  setBgLightInput(e.target.value);
+                }}
+                className="relative overflow-hidden rounded-2xl outline-none px-4 h-11 text-sm font-semibold w-full"
+                style={{
+                  background: "color-mix(in srgb, var(--fg) 4%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                  color: "var(--fg)",
+                }}
+              >
+                {BG_PRESETS_LIGHT.map((p) => (
+                  <option key={p.id} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
 
               <input
-                value={accentInput}
-                onChange={(e) => setAccentInput(e.target.value)}
-                onBlur={() => commitAccent(accentInput)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitAccent(accentInput);
+                type="color"
+                value={colorInputValue(bgLight, "#f6f7f9")}
+                onChange={(e) => {
+                  setBgLight(e.target.value);
+                  setBgLightInput(e.target.value);
                 }}
-                placeholder="#3b82f6"
-                className="w-36 bg-transparent outline-none text-sm font-extrabold text-right"
-                style={{ color: "var(--fg)" }}
-                aria-label="Accent hex"
+                className="h-11 w-12 rounded-2xl"
+                style={{
+                  border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                  background: "transparent",
+                }}
+                aria-label="Pick light background color"
               />
             </div>
 
-            {/* Presets */}
-            <div className="glass glass-strong ring-1 rounded-2xl p-3" style={{ borderColor: "var(--glass-border)" }}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[11px] font-extrabold tracking-tight" style={{ color: "var(--muted)" }}>
-                  Presets
-                </div>
-                <Pill>{ACCENT_PRESETS.length}</Pill>
-              </div>
-
-              <div className="mt-3 grid grid-cols-8 gap-2">
-                {ACCENT_PRESETS.map((p) => {
-                  const active =
-                    accentEnabled && accent && accent.toLowerCase() === p.value.toLowerCase();
-
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => applyAccentPreset(p.value)}
-                      className="h-9 w-9 rounded-xl ring-1 transition-transform active:scale-[0.98]"
-                      style={{
-                        background: p.value,
-                        borderColor: active
-                          ? "color-mix(in srgb, var(--fg) 18%, transparent)"
-                          : "var(--glass-border)",
-                        boxShadow: active
-                          ? `0 0 0 2px color-mix(in srgb, var(--fg) 18%, transparent), 0 10px 22px rgba(0,0,0,0.12)`
-                          : `inset 0 1px 0 rgba(255,255,255,0.18)`,
-                      }}
-                      aria-label={`Set accent to ${p.label}`}
-                      title={p.label}
-                    />
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 text-[11px]" style={{ color: "var(--muted)" }}>
-                Accent only affects UI when enabled (picked or typed).
-              </div>
-
-              {accentEnabled && (
-                <div className="mt-3">
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => {
-                      setAccentEnabled(false);
-                      setAccent("");
-                      setAccentInput("");
-                    }}
-                  >
-                    Disable accent
-                  </Button>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Vibes */}
-          <section className="space-y-2">
-            <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
-              Vibes
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {VIBE_PRESETS.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => applyVibe(v)}
-                  className="glass glass-focus rounded-2xl px-3 py-3 text-sm font-extrabold ring-1 text-left"
-                  style={{ color: "var(--fg)", borderColor: "var(--glass-border)" }}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="truncate">{v.label}</span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-4 w-4 rounded-full ring-1" style={{ background: v.light, borderColor: "var(--glass-border)" as any }} />
-                      <span className="h-4 w-4 rounded-full ring-1" style={{ background: v.dark, borderColor: "var(--glass-border)" as any }} />
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Background (unchanged from your version) */}
-          <section className="space-y-3">
-            <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
-              Background
-            </div>
-
-            {/* Light */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[11px] font-semibold" style={{ color: "var(--muted)" }}>
-                  Light background
-                </div>
-
-                <input
-                  type="color"
-                  value={colorInputValue(bgLight, "#f6f7f9")}
-                  onChange={(e) => {
-                    setBgLight(e.target.value);
-                    setBgLightInput(e.target.value);
-                  }}
-                  className="h-8 w-10 rounded-xl ring-1"
-                  style={{ borderColor: "var(--glass-border)", background: "transparent" }}
-                  aria-label="Pick light background color"
-                />
-              </div>
-
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <select
-                  value={bgLight}
-                  onChange={(e) => {
-                    setBgLight(e.target.value);
-                    setBgLightInput(e.target.value);
-                  }}
-                  className="glass glass-focus rounded-2xl px-4 py-3 text-sm font-semibold ring-1 outline-none w-full"
-                  style={{
-                    backgroundColor: "var(--glass-bg)",
-                    color: "var(--fg)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  {BG_PRESETS_LIGHT.map((p) => (
-                    <option key={p.id} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="glass rounded-2xl px-3 py-3 ring-1 flex items-center gap-2" style={{ borderColor: "var(--glass-border)" }}>
-                  <span className="h-5 w-5 rounded-xl ring-1" style={{ background: colorInputValue(bgLight, "#f6f7f9"), borderColor: "var(--glass-border)" as any }} />
-                  <input
-                    value={bgLightInput}
-                    onChange={(e) => setBgLightInput(e.target.value)}
-                    onBlur={() => commitLight(bgLightInput)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitLight(bgLightInput);
-                    }}
-                    placeholder="#f6f7f9"
-                    className="w-24 bg-transparent outline-none text-xs font-semibold"
-                    style={{ color: "var(--fg)" }}
-                    aria-label="Light background hex"
-                  />
-                </div>
+            <div className="mt-2">
+              <input
+                value={bgLightInput}
+                onChange={(e) => setBgLightInput(e.target.value)}
+                onBlur={() => commitLight(bgLightInput)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitLight(bgLightInput);
+                }}
+                placeholder="#f6f7f9"
+                className="w-full bg-transparent outline-none text-sm font-extrabold"
+                style={{
+                  color: "var(--fg)",
+                  borderRadius: 14,
+                  padding: "10px 12px",
+                  border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+                }}
+                aria-label="Light background hex"
+              />
+              <div className="mt-2 text-[11px]" style={{ color: "var(--muted)" }}>
+                Press Enter to apply.
               </div>
             </div>
+          </PanelRow>
 
-            {/* Dark */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[11px] font-semibold" style={{ color: "var(--muted)" }}>
-                  Dark background
-                </div>
+          {/* Dark */}
+          <PanelRow title="Dark background" subtitle="Pick a preset or type a hex value.">
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <select
+                value={bgDark}
+                onChange={(e) => {
+                  setBgDark(e.target.value);
+                  setBgDarkInput(e.target.value);
+                }}
+                className="relative overflow-hidden rounded-2xl outline-none px-4 h-11 text-sm font-semibold w-full"
+                style={{
+                  background: "color-mix(in srgb, var(--fg) 4%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                  color: "var(--fg)",
+                }}
+              >
+                {BG_PRESETS_DARK.map((p) => (
+                  <option key={p.id} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
 
-                <input
-                  type="color"
-                  value={colorInputValue(bgDark, "#000000")}
-                  onChange={(e) => {
-                    setBgDark(e.target.value);
-                    setBgDarkInput(e.target.value);
-                  }}
-                  className="h-8 w-10 rounded-xl ring-1"
-                  style={{ borderColor: "var(--glass-border)", background: "transparent" }}
-                  aria-label="Pick dark background color"
-                />
-              </div>
+              <input
+                type="color"
+                value={colorInputValue(bgDark, "#000000")}
+                onChange={(e) => {
+                  setBgDark(e.target.value);
+                  setBgDarkInput(e.target.value);
+                }}
+                className="h-11 w-12 rounded-2xl"
+                style={{
+                  border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                  background: "transparent",
+                }}
+                aria-label="Pick dark background color"
+              />
+            </div>
 
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <select
-                  value={bgDark}
-                  onChange={(e) => {
-                    setBgDark(e.target.value);
-                    setBgDarkInput(e.target.value);
-                  }}
-                  className="glass glass-focus rounded-2xl px-4 py-3 text-sm font-semibold ring-1 outline-none w-full"
-                  style={{
-                    backgroundColor: "var(--glass-bg)",
-                    color: "var(--fg)",
-                    borderColor: "var(--glass-border)",
-                  }}
-                >
-                  {BG_PRESETS_DARK.map((p) => (
-                    <option key={p.id} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="glass rounded-2xl px-3 py-3 ring-1 flex items-center gap-2" style={{ borderColor: "var(--glass-border)" }}>
-                  <span className="h-5 w-5 rounded-xl ring-1" style={{ background: colorInputValue(bgDark, "#000000"), borderColor: "var(--glass-border)" as any }} />
-                  <input
-                    value={bgDarkInput}
-                    onChange={(e) => setBgDarkInput(e.target.value)}
-                    onBlur={() => commitDark(bgDarkInput)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitDark(bgDarkInput);
-                    }}
-                    placeholder="#000000"
-                    className="w-24 bg-transparent outline-none text-xs font-semibold"
-                    style={{ color: "var(--fg)" }}
-                    aria-label="Dark background hex"
-                  />
-                </div>
-              </div>
-
-              <div className="text-[11px]" style={{ color: "var(--muted)" }}>
-                Theme + background + accent are stored locally on this device.
+            <div className="mt-2">
+              <input
+                value={bgDarkInput}
+                onChange={(e) => setBgDarkInput(e.target.value)}
+                onBlur={() => commitDark(bgDarkInput)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitDark(bgDarkInput);
+                }}
+                placeholder="#000000"
+                className="w-full bg-transparent outline-none text-sm font-extrabold"
+                style={{
+                  color: "var(--fg)",
+                  borderRadius: 14,
+                  padding: "10px 12px",
+                  border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+                }}
+                aria-label="Dark background hex"
+              />
+              <div className="mt-2 text-[11px]" style={{ color: "var(--muted)" }}>
+                Press Enter to apply.
               </div>
             </div>
-          </section>
+          </PanelRow>
+
+          <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+            Theme, background, and accent are stored locally on this device.
+          </div>
         </div>
       </Card>
     </div>
