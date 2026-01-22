@@ -5,27 +5,64 @@
 
     <!-- App identity -->
     <title>Shared Reality</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
 
-    <!-- Vite base-aware icons/manifest (works on GH Pages subpath) -->
+    <!-- Icons / manifest (GH Pages safe relative paths) -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="manifest" href="./manifest.webmanifest" />
 
-    <!-- iOS home screen support -->
+    <!-- iOS home screen / PWA -->
     <link rel="apple-touch-icon" href="./pwa-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="Shared Reality" />
 
-    <!-- Theme colors -->
-    <meta name="theme-color" content="#0f172a" />
-    <script type="module" crossorigin src="/couples-question-deck/assets/index-CLxOs4__.js"></script>
-    <link rel="stylesheet" crossorigin href="/couples-question-deck/assets/index-D3V173Nh.css">
+    <!-- Theme colors (system-aware for Safari / iOS) -->
+    <meta
+      name="theme-color"
+      content="#f6f7f9"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#000000"
+      media="(prefers-color-scheme: dark)"
+    />
+
+    <!-- Theme bootstrap (runs BEFORE paint, prevents flash) -->
+    <script>
+      (function () {
+        const KEY = "sr-theme";
+        const mode = localStorage.getItem(KEY) || "system";
+
+        const systemDark =
+          window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+        const shouldDark = mode === "dark" || (mode === "system" && systemDark);
+        document.documentElement.classList.toggle("dark", shouldDark);
+
+        // IMPORTANT:
+        // You have TWO theme-color metas (light + dark). querySelector(...) returns only the first.
+        // Update BOTH so iOS Safari + PWA chrome stays consistent when user overrides system theme.
+        const metas = document.querySelectorAll('meta[name="theme-color"]');
+        const color = shouldDark ? "#000000" : "#f6f7f9";
+        metas.forEach((m) => m.setAttribute("content", color));
+      })();
+    </script>
+    <script type="module" crossorigin src="/couples-question-deck/assets/index-BWcpNUhC.js"></script>
+    <link rel="stylesheet" crossorigin href="/couples-question-deck/assets/index-yJLRbrCy.css">
   <link rel="manifest" href="/couples-question-deck/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/couples-question-deck/registerSW.js"></script></head>
 
   <body>
     <div id="root"></div>
 
-    <!-- Vite entry: keep absolute /src/... in dev (Vite expects this) -->
+    <!-- Vite entry (absolute path for dev; base handled in build) -->
   </body>
 </html>
