@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
 
     <!-- App identity -->
-    <title>Shared Reality</title>
+    <title>Is This Everything?</title>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
@@ -13,23 +13,28 @@
     <!--
       IMPORTANT for Vite + base="/couples-question-deck/":
       Use RELATIVE paths in index.html so dev (/) and GH Pages (/couples-question-deck/)
-      both work without you hardcoding the repo name here.
+      both work without hardcoding the repo name here.
     -->
 
     <!-- Icons / manifest -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
 
     <!-- iOS home screen / PWA -->
     <link rel="apple-touch-icon" href="./pwa-192.png" />
+
+    <!-- Modern standard -->
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Legacy Safari -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <meta name="apple-mobile-web-app-title" content="Shared Reality" />
+    <meta name="apple-mobile-web-app-title" content="Is This Everything?" />
 
-    <!-- Theme colors (system-aware) -->
+    <!-- Theme colors (system-aware baseline; JS below will update BOTH) -->
     <meta
       name="theme-color"
       content="#f6f7f9"
@@ -48,32 +53,32 @@
       - Applies background overrides (sr-bg-light / sr-bg-dark)
       - Applies accent if stored (sr-accent) by setting:
           html[data-accent="on"] and inline --accent
+      - Updates BOTH theme-color metas so iOS Safari/PWA chrome stays consistent
     -->
     <script>
       (function () {
         try {
           const root = document.documentElement;
 
-          // ----- Theme mode -----
+          // ----- Keys -----
           const THEME_KEY = "sr-theme";
+          const BG_LIGHT_KEY = "sr-bg-light";
+          const BG_DARK_KEY = "sr-bg-dark";
+          const ACCENT_KEY = "sr-accent";
+
+          // ----- Theme mode -----
           const mode = localStorage.getItem(THEME_KEY) || "system";
           const systemDark =
             window.matchMedia &&
             window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-          const shouldDark = mode === "dark" || (mode === "system" && systemDark);
+          const shouldDark =
+            mode === "dark" || (mode === "system" && systemDark);
           root.classList.toggle("dark", shouldDark);
 
-          // Update BOTH theme-color metas (Safari/PWA chrome)
-          const metas = document.querySelectorAll('meta[name="theme-color"]');
-          const chromeColor = shouldDark ? "#000000" : "#f6f7f9";
-          metas.forEach((m) => m.setAttribute("content", chromeColor));
-
           // ----- Background overrides (optional) -----
-          const BG_LIGHT_KEY = "sr-bg-light";
-          const BG_DARK_KEY = "sr-bg-dark";
-          const bgLight = localStorage.getItem(BG_LIGHT_KEY) || "";
-          const bgDark = localStorage.getItem(BG_DARK_KEY) || "";
+          const bgLight = (localStorage.getItem(BG_LIGHT_KEY) || "").trim();
+          const bgDark = (localStorage.getItem(BG_DARK_KEY) || "").trim();
 
           if (bgLight) root.style.setProperty("--bg-override-light", bgLight);
           else root.style.removeProperty("--bg-override-light");
@@ -81,8 +86,13 @@
           if (bgDark) root.style.setProperty("--bg-override-dark", bgDark);
           else root.style.removeProperty("--bg-override-dark");
 
+          // Helper: update BOTH theme-color metas (Safari/PWA chrome)
+          function setThemeColorMeta(color) {
+            const metas = document.querySelectorAll('meta[name="theme-color"]');
+            metas.forEach((m) => m.setAttribute("content", color));
+          }
+
           // ----- Accent (optional) -----
-          const ACCENT_KEY = "sr-accent";
           const accent = (localStorage.getItem(ACCENT_KEY) || "").trim();
 
           // Tiny validation to avoid poisoning CSS with junk
@@ -91,26 +101,28 @@
           if (isHex) {
             root.style.setProperty("--accent", accent);
             root.setAttribute("data-accent", "on");
+
+            // Tint the browser chrome/status bar area to match accent
+            setThemeColorMeta(accent);
           } else {
             root.style.removeProperty("--accent");
             root.removeAttribute("data-accent");
+
+            // Fall back to baseline theme colors
+            setThemeColorMeta(shouldDark ? "#000000" : "#f6f7f9");
           }
         } catch (e) {
-          // If anything fails, we prefer the app still loads over perfect theming.
+          // Prefer loading over perfect theming
         }
       })();
     </script>
-    <script type="module" crossorigin src="/couples-question-deck/assets/index-BhLIlwpx.js"></script>
-    <link rel="stylesheet" crossorigin href="/couples-question-deck/assets/index-CzclTZLX.css">
+    <script type="module" crossorigin src="/couples-question-deck/assets/index-DeFEudcn.js"></script>
+    <link rel="stylesheet" crossorigin href="/couples-question-deck/assets/index-CQYwAWs2.css">
   <link rel="manifest" href="/couples-question-deck/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/couples-question-deck/registerSW.js"></script></head>
 
   <body>
     <div id="root"></div>
 
-    <!--
-      Vite entry:
-      Use relative "./src/main.tsx" so Vite base handles GH Pages automatically.
-      Absolute "/src/main.tsx" will break on GH Pages under /couples-question-deck/.
-    -->
+    <!-- Vite entry: keep relative so Vite base handles GH Pages automatically -->
   </body>
 </html>
