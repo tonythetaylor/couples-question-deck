@@ -168,23 +168,23 @@ export function CategoryPicker({
     opacity: active ? 1 : 0.9,
   });
 
-  return (
+return (
     <div className="space-y-4">
       {showHeader && (
         <div className="space-y-1">
           <div style={labelStyle}>Categories</div>
           <div className="text-sm font-extrabold" style={{ color: "var(--fg)" }}>
-            Pick the vibe of the deck
+            Choose what you want to touch
           </div>
           <div className="text-[11px]" style={{ color: "var(--muted)" }}>
-            Multi-select. Empty = any category.
+            Multi-select. Empty means the deck can pull from anywhere.
           </div>
         </div>
       )}
 
-      {/* FILTER (view only) */}
+      {/* LAYERS (view only) */}
       <div className="space-y-2">
-        <div style={labelStyle}>Filter</div>
+        <div style={labelStyle}>Layers</div>
 
         <div className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={segWrapStyle}>
           <button
@@ -196,6 +196,7 @@ export function CategoryPicker({
           >
             All
           </button>
+
           <button
             type="button"
             onClick={() => setFilter("core")}
@@ -203,8 +204,9 @@ export function CategoryPicker({
             className="h-8 rounded-xl text-[12px] font-extrabold transition"
             style={segBtn(filter === "core")}
           >
-            Core
+            Surface
           </button>
+
           <button
             type="button"
             onClick={() => setFilter("deep")}
@@ -212,20 +214,20 @@ export function CategoryPicker({
             className="h-8 rounded-xl text-[12px] font-extrabold transition"
             style={segBtn(filter === "deep")}
           >
-            Deep
+            Underneath
           </button>
         </div>
 
         <div className="text-[11px]" style={{ color: "var(--muted)" }}>
           {filter === "core"
-            ? "Day-to-day clarity: communication, values, regulation, repair."
+            ? "Start light. Clarity, communication, values, and everyday truth."
             : filter === "deep"
-              ? "Higher stakes: trust, boundaries, co-living, intimacy, exit clarity."
-              : "Browse everything. Selection stays the same."}
+              ? "Higher stakes. Trust, boundaries, intimacy, co-living, and exit clarity."
+              : "Browse everything. Your selection doesn’t change."}
         </div>
       </div>
 
-      {/* ACTIONS (selection only) */}
+      {/* SELECTION (selection only) */}
       <div className="space-y-2">
         <div style={labelStyle}>Selection</div>
 
@@ -248,6 +250,10 @@ export function CategoryPicker({
           >
             Clear all
           </button>
+        </div>
+
+        <div className="text-[11px]" style={{ color: "var(--muted)" }}>
+          Empty selection means “surprise me.”
         </div>
       </div>
 

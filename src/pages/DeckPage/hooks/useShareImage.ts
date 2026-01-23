@@ -53,7 +53,7 @@ export function useShareImage(params: {
 
       if (canShareFiles) {
         try {
-          await navigator.share({ title: "Shared Reality", files: [file] });
+          await navigator.share({ title: "Is This Everything?", files: [file] });
           return;
         } catch (err) {
           if (isUserCancelledShare(err)) return;

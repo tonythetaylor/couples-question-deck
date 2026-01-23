@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { HomePage } from "../pages/HomePage";
-import { DeckPage } from "../pages/DesktopPage/DeckPage";
+import { DeckPage } from "../pages/DeckPage/DeckPage";
 import { SavedPage } from "../pages/SavedPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { Button } from "../ui/Button";

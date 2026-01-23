@@ -4,10 +4,16 @@ import type { DeckOptions, Tone } from "../domain/types";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { QUESTIONS } from "../data/questions";
 import { generateDeck } from "../domain/deck";
-import { loadDeckHistory, pushDeckHistory, saveActiveDeck } from "../storage/db";
+import {
+  loadDeckHistory,
+  pushDeckHistory,
+  saveActiveDeck,
+} from "../storage/db";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { ChevronDown } from "lucide-react";
+
+import { BRAND } from "../config/brand";
 
 const RECENT_COOLDOWN_LIMIT = 80;
 
@@ -111,7 +117,10 @@ function CollapsibleSection({
             </div>
 
             {subtitle ? (
-              <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+              <div
+                className="text-[11px] leading-relaxed"
+                style={{ color: "var(--muted)" }}
+              >
                 {subtitle}
               </div>
             ) : null}
@@ -123,7 +132,8 @@ function CollapsibleSection({
               className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
               style={{
                 background: "color-mix(in srgb, var(--fg) 3%, transparent)",
-                border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
                 color: "var(--fg)",
               }}
               aria-hidden
@@ -162,7 +172,7 @@ export function HomePage({ onStart }: { onStart: () => void }) {
   const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
 
   // Collapsibles (flow: categories → customize)
-  const [categoriesOpen, setCategoriesOpen] = useState(true);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const excludeTags = useMemo(() => {
@@ -179,7 +189,10 @@ export function HomePage({ onStart }: { onStart: () => void }) {
 
   async function handleGenerate() {
     const history = await loadDeckHistory();
-    const recentQuestionIds = collectRecentQuestionIdsFromHistory(history, RECENT_COOLDOWN_LIMIT);
+    const recentQuestionIds = collectRecentQuestionIdsFromHistory(
+      history,
+      RECENT_COOLDOWN_LIMIT,
+    );
 
     const opts: DeckOptions = {
       size,
@@ -218,6 +231,12 @@ export function HomePage({ onStart }: { onStart: () => void }) {
       "repair",
       "values",
       "humor",
+      "trust",
+      "boundaries",
+      "co_living",
+      "intimacy",
+      "parenting_family",
+      "breakup_exit",
     ];
 
     const list = selectedCategories.length ? selectedCategories : defaults;
@@ -227,36 +246,53 @@ export function HomePage({ onStart }: { onStart: () => void }) {
   const pickedCount = selectedCategories.length;
 
   return (
-    <div className="mx-auto max-w-md px-4 py-6 space-y-4">
-      {/* Header */}
-      <header className="pt-safe space-y-2">
+<div className="mx-auto max-w-md px-4 pt-6 space-y-4">
+        {/* Header */}
+      <header className="space-y-3">
+        {/* Eyebrow / mode */}
         <div
-          className="text-[11px] font-extrabold tracking-[0.14em] uppercase"
+          className="text-[11px] font-extrabold tracking-[0.18em] uppercase"
           style={{ color: "var(--muted)" }}
         >
-          Shared Reality Deck
+          The Deck
         </div>
 
+        {/* Main brand question (hero) */}
         <h1
-          className="text-[26px] leading-[1.12] font-extrabold tracking-tight"
+          className="text-[32px] leading-[1.06] font-extrabold tracking-tight"
           style={{ color: "var(--fg)" }}
         >
-          Revealing questions, one at a time.
+          {BRAND.appName}
         </h1>
 
-        <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-          No gotchas. You’re gathering data, not arguing.
-        </p>
+        {/* Tagline becomes supportive, not the headline */}
+        <div className="space-y-1">
+          <p
+            className="text-[13px] font-semibold"
+            style={{ color: "var(--muted)" }}
+          >
+            {BRAND.tagline}
+          </p>
+
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: "var(--muted)" }}
+          >
+            Answer only what you’re ready to share. Pause is always an option.
+          </p>
+        </div>
       </header>
 
       {/* 1) Categories FIRST */}
       <CollapsibleSection
         eyebrow="Step 1"
-        title="Pick categories"
-        subtitle="Optional. Empty means any category."
+        title="Choose what to explore"
+        subtitle="Optional. Leave it empty to let the deck decide."
         open={categoriesOpen}
         onToggle={() => setCategoriesOpen((v) => !v)}
-        rightSlot={<SummaryPill text={pickedCount ? `${pickedCount} picked` : "Any"} />}
+        rightSlot={
+          <SummaryPill text={pickedCount ? `${pickedCount} picked` : "Any"} />
+        }
       >
         <CategoryPicker
           value={selectedCategories}
@@ -266,7 +302,6 @@ export function HomePage({ onStart }: { onStart: () => void }) {
           showHeader={false}
         />
 
-        {/* Small helper action: encourage next step */}
         <div className="mt-5">
           <Button
             className="w-full"
@@ -276,7 +311,7 @@ export function HomePage({ onStart }: { onStart: () => void }) {
               setCategoriesOpen(false);
             }}
           >
-            Continue to deck options
+            Continue
           </Button>
         </div>
       </CollapsibleSection>
@@ -284,8 +319,8 @@ export function HomePage({ onStart }: { onStart: () => void }) {
       {/* 2) Customize SECOND */}
       <CollapsibleSection
         eyebrow="Step 2"
-        title="Deck options"
-        subtitle="Size, tone, and filters."
+        title="Set the tone"
+        subtitle="Size, tone, and a couple guardrails."
         open={customizeOpen}
         onToggle={() => setCustomizeOpen((v) => !v)}
         rightSlot={<SummaryPill text={`${size} cards`} />}
@@ -293,7 +328,10 @@ export function HomePage({ onStart }: { onStart: () => void }) {
         <div className="space-y-5">
           {/* Size */}
           <div className="space-y-2">
-            <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
+            <div
+              className="text-xs font-semibold"
+              style={{ color: "var(--muted)" }}
+            >
               Deck size
             </div>
 
@@ -319,7 +357,9 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                     aria-pressed={selected}
                     className="h-9 rounded-xl text-[12px] font-extrabold transition"
                     style={{
-                      background: selected ? "var(--seg-selected-bg)" : "transparent",
+                      background: selected
+                        ? "var(--seg-selected-bg)"
+                        : "transparent",
                       color: selected ? "var(--seg-selected-fg)" : "var(--fg)",
                       boxShadow: selected
                         ? "inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--glass-inner)"
@@ -340,7 +380,9 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                 aria-pressed={useCustomSize}
                 className="h-9 rounded-xl text-[12px] font-extrabold transition"
                 style={{
-                  background: useCustomSize ? "var(--seg-selected-bg)" : "transparent",
+                  background: useCustomSize
+                    ? "var(--seg-selected-bg)"
+                    : "transparent",
                   color: useCustomSize ? "var(--seg-selected-fg)" : "var(--fg)",
                   boxShadow: useCustomSize
                     ? "inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--glass-inner)"
@@ -356,15 +398,22 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                 className="rounded-2xl px-4 py-3"
                 style={{
                   background: "color-mix(in srgb, var(--fg) 3%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
                 }}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="space-y-0.5">
-                    <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
+                    <div
+                      className="text-xs font-semibold"
+                      style={{ color: "var(--muted)" }}
+                    >
                       Custom size
                     </div>
-                    <div className="text-[11px]" style={{ color: "var(--muted)" }}>
+                    <div
+                      className="text-[11px]"
+                      style={{ color: "var(--muted)" }}
+                    >
                       {MIN_SIZE}–{MAX_SIZE} cards
                     </div>
                   </div>
@@ -374,7 +423,13 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                       type="button"
                       onClick={() =>
                         setCustomSizeRaw(
-                          String(clampInt(Number(customSizeRaw) - 1, MIN_SIZE, MAX_SIZE))
+                          String(
+                            clampInt(
+                              Number(customSizeRaw) - 1,
+                              MIN_SIZE,
+                              MAX_SIZE,
+                            ),
+                          ),
                         )
                       }
                       className="h-9 w-9 rounded-xl font-extrabold"
@@ -392,14 +447,21 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       value={customSizeRaw}
-                      onChange={(e) => setCustomSizeRaw(e.target.value.replace(/[^\d]/g, ""))}
+                      onChange={(e) =>
+                        setCustomSizeRaw(e.target.value.replace(/[^\d]/g, ""))
+                      }
                       onBlur={() =>
-                        setCustomSizeRaw(String(clampInt(Number(customSizeRaw), MIN_SIZE, MAX_SIZE)))
+                        setCustomSizeRaw(
+                          String(
+                            clampInt(Number(customSizeRaw), MIN_SIZE, MAX_SIZE),
+                          ),
+                        )
                       }
                       className="h-9 w-16 rounded-xl text-center text-sm font-extrabold outline-none"
                       style={{
                         background: "transparent",
-                        border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+                        border:
+                          "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
                         color: "var(--fg)",
                       }}
                       aria-label="Custom deck size"
@@ -409,7 +471,13 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                       type="button"
                       onClick={() =>
                         setCustomSizeRaw(
-                          String(clampInt(Number(customSizeRaw) + 1, MIN_SIZE, MAX_SIZE))
+                          String(
+                            clampInt(
+                              Number(customSizeRaw) + 1,
+                              MIN_SIZE,
+                              MAX_SIZE,
+                            ),
+                          ),
                         )
                       }
                       className="h-9 w-9 rounded-xl font-extrabold"
@@ -425,9 +493,14 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                   </div>
                 </div>
 
-                <div className="mt-2 text-[11px]" style={{ color: "var(--muted)" }}>
+                <div
+                  className="mt-2 text-[11px]"
+                  style={{ color: "var(--muted)" }}
+                >
                   Effective size:{" "}
-                  <span style={{ color: "var(--fg)", fontWeight: 800 }}>{size}</span>
+                  <span style={{ color: "var(--fg)", fontWeight: 800 }}>
+                    {size}
+                  </span>
                 </div>
               </div>
             ) : null}
@@ -435,7 +508,10 @@ export function HomePage({ onStart }: { onStart: () => void }) {
 
           {/* Tone */}
           <div className="space-y-2">
-            <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>
+            <div
+              className="text-xs font-semibold"
+              style={{ color: "var(--muted)" }}
+            >
               Tone
             </div>
 
@@ -443,14 +519,16 @@ export function HomePage({ onStart }: { onStart: () => void }) {
               className="relative overflow-hidden rounded-2xl"
               style={{
                 background: "color-mix(in srgb, var(--fg) 4%, transparent)",
-                border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
               }}
             >
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 top-0 h-8"
                 style={{
-                  background: "linear-gradient(to bottom, rgba(255,255,255,0.14), transparent)",
+                  background:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.14), transparent)",
                   opacity: 0.7,
                 }}
               />
@@ -482,10 +560,16 @@ export function HomePage({ onStart }: { onStart: () => void }) {
             }}
           >
             <div className="space-y-0.5">
-              <div className="text-sm font-extrabold" style={{ color: "var(--fg)" }}>
+              <div
+                className="text-sm font-extrabold"
+                style={{ color: "var(--fg)" }}
+              >
                 Avoid money topics
               </div>
-              <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
+              <div
+                className="text-[11px] leading-relaxed"
+                style={{ color: "var(--muted)" }}
+              >
                 Removes money + expectations prompts.
               </div>
             </div>
@@ -497,7 +581,9 @@ export function HomePage({ onStart }: { onStart: () => void }) {
               onClick={() => setExcludeMoney((v) => !v)}
               className="h-7 w-12 rounded-full p-1 transition"
               style={{
-                background: excludeMoney ? "var(--toggle-track-on)" : "var(--toggle-track-off)",
+                background: excludeMoney
+                  ? "var(--toggle-track-on)"
+                  : "var(--toggle-track-off)",
                 border: "1px solid var(--toggle-track-border)",
                 boxShadow: excludeMoney
                   ? "inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--glass-inner)"
@@ -507,8 +593,12 @@ export function HomePage({ onStart }: { onStart: () => void }) {
               <span
                 className="block h-5 w-5 rounded-full transition"
                 style={{
-                  transform: excludeMoney ? "translateX(20px)" : "translateX(0px)",
-                  background: excludeMoney ? "var(--toggle-thumb-on)" : "var(--toggle-thumb-off)",
+                  transform: excludeMoney
+                    ? "translateX(20px)"
+                    : "translateX(0px)",
+                  background: excludeMoney
+                    ? "var(--toggle-thumb-on)"
+                    : "var(--toggle-thumb-off)",
                   boxShadow: "inset 0 1px 0 var(--glass-highlight)",
                 }}
               />
@@ -517,7 +607,7 @@ export function HomePage({ onStart }: { onStart: () => void }) {
 
           {/* Generate */}
           <Button className="w-full" onClick={handleGenerate}>
-            Generate deck
+            Start the deck
           </Button>
 
           {/* Collapse after open (your request) */}
@@ -529,21 +619,30 @@ export function HomePage({ onStart }: { onStart: () => void }) {
             Collapse options
           </Button>
 
-          <div className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>
-            Tip: ask one question per conversation. Don’t explain why you’re asking.
+          <div
+            className="text-[11px] leading-relaxed"
+            style={{ color: "var(--muted)" }}
+          >
+            Tip: ask one question. Then listen. No closing argument.
           </div>
         </div>
       </CollapsibleSection>
 
       {/* What's inside */}
       <Card>
-        <div className="text-sm font-extrabold tracking-tight" style={{ color: "var(--fg)" }}>
+        <div
+          className="text-sm font-extrabold tracking-tight"
+          style={{ color: "var(--fg)" }}
+        >
           What’s inside
         </div>
 
-        <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-          Questions designed to surface intent, self-awareness, communication depth, regulation,
-          and mutuality.
+        <p
+          className="mt-2 text-sm leading-relaxed"
+          style={{ color: "var(--muted)" }}
+        >
+          Questions that go past the surface. Nothing is scored. You don’t have
+          to agree. You just have to listen.
         </p>
 
         <div className="mt-4 flex flex-wrap gap-x-3 gap-y-2">

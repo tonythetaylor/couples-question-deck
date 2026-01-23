@@ -1,13 +1,14 @@
-// src/pages/DeckPage/components/QuestionCard.tsx
 import type { Category, Question } from "../../../domain/types";
 import { Card } from "../../../ui/Card";
 import { CATEGORY_LABEL } from "../utils/categoryLabels";
-import { TIP_TEXT } from "../utils/shareText";
+import { getTipTextForQuestion } from "../../../config/brandUtils";
 
 const normalizeCategoryLabel = (category: Category) =>
   CATEGORY_LABEL[category] ?? category;
 
 export function QuestionCard({ current }: { current: Question }) {
+  const tipText = getTipTextForQuestion(current);
+
   return (
     <Card>
       <div className="flex items-center justify-between">
@@ -34,7 +35,7 @@ export function QuestionCard({ current }: { current: Question }) {
       </div>
 
       <div className="mt-5 text-base" style={{ color: "var(--muted)" }}>
-        {TIP_TEXT}
+        {tipText}
       </div>
 
       {current.notes ? (
@@ -52,7 +53,10 @@ export function QuestionCard({ current }: { current: Question }) {
             Why this question exists
           </div>
 
-          <div className="mt-2 text-lg font-semibold" style={{ color: "var(--fg)" }}>
+          <div
+            className="mt-2 text-lg font-semibold"
+            style={{ color: "var(--fg)" }}
+          >
             {current.notes}
           </div>
         </div>

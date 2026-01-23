@@ -1,15 +1,15 @@
-# Shared Reality Deck
+# Is This Everything? 
 
 **Revealing questions, one at a time.**
 
-Shared Reality Deck is a mobile-first Progressive Web App (PWA) that generates intentional question decks for couples.  
+Is This Everything?  is a mobile-first Progressive Web App (PWA) that generates intentional question decks for couples.  
 No gotchas. No games. You’re gathering data, not arguing.
 
 ---
 
 ## What this is
 
-Shared Reality Deck is designed to support **slow, high-signal conversations** between partners.
+Is This Everything?  is designed to support **slow, high-signal conversations** between partners.
 
 Instead of novelty prompts or conflict-driven questions, the app focuses on surfacing how each person:
 - Thinks about partnership
@@ -106,7 +106,7 @@ http://localhost:4173
 ### Desktop (Chrome)
 - Open the preview URL
 - Look for the install icon in the address bar or Chrome menu
-- Select **Install Shared Reality Deck**
+- Select **Install Is This Everything?**
 
 ### iOS (Safari)
 - Open the app

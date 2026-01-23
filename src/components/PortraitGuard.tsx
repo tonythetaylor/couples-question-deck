@@ -29,7 +29,7 @@ export function PortraitGuard() {
     <div className="fixed inset-0 z-[9999] bg-slate-950 text-white flex items-center justify-center px-6">
       <div className="max-w-sm text-center space-y-4">
         <div className="text-2xl font-extrabold tracking-tight">
-          Shared Reality
+          Is This Everything?
         </div>
 
         <p className="text-sm text-slate-300 leading-relaxed">

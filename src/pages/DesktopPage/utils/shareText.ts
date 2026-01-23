@@ -1,1 +1,0 @@
-export const TIP_TEXT = "Ask it once. Don’t narrate. Let silence do the lifting.";

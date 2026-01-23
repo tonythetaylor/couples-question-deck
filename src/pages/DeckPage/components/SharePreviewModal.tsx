@@ -56,7 +56,7 @@ export function SharePreviewModal({
               background: "color-mix(in srgb, var(--fg) 3%, transparent)",
             }}
           >
-            <img src={url} alt="Shared Reality card" className="w-full h-auto" />
+            <img src={url} alt="Is THis Everything card" className="w-full h-auto" />
           </div>
 
           <div className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
