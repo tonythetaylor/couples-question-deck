@@ -11,59 +11,138 @@ import { bootstrapTheme } from "./helpers/themeBootstrap";
 
 type Route = "home" | "deck" | "saved" | "settings";
 
+const THEME_KEY = "sr-theme";
+const BG_LIGHT_KEY = "sr-bg-light";
+const BG_DARK_KEY = "sr-bg-dark";
+const ACCENT_KEY = "sr-accent";
+
+function getResolvedMode(): "light" | "dark" {
+  const mode = (localStorage.getItem(THEME_KEY) ?? "system") as
+    | "system"
+    | "light"
+    | "dark";
+
+  const systemDark =
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+  const shouldDark = mode === "dark" || (mode === "system" && systemDark);
+  return shouldDark ? "dark" : "light";
+}
+
+function setThemeColorMeta(color: string) {
+  // Update ALL theme-color metas (you have 2 with media queries sometimes)
+  const metas = document.querySelectorAll<HTMLMetaElement>(
+    'meta[name="theme-color"]',
+  );
+  metas.forEach((m) => m.setAttribute("content", color));
+}
+
+function computeStatusBarColor(): string {
+  const resolved = getResolvedMode();
+
+  const bgLight = localStorage.getItem(BG_LIGHT_KEY) || "#f6f7f9";
+  const bgDark = localStorage.getItem(BG_DARK_KEY) || "#000000";
+
+  const accent = (localStorage.getItem(ACCENT_KEY) || "").trim();
+
+  // Base is the actual background for the mode
+  const base = resolved === "dark" ? bgDark : bgLight;
+
+  // If accent is off, just return base
+  if (!accent) return base;
+
+  // If accent is on, tint the base slightly toward accent.
+  // This gives “theme-color” an accent vibe without becoming neon.
+  // Uses CSS color-mix so it matches your design language.
+  return `color-mix(in srgb, ${base} 78%, ${accent} 22%)`;
+}
+
 export default function App() {
   const [route, setRoute] = useState<Route>("home");
 
   useEffect(() => {
     bootstrapTheme();
 
-    // optional: ensure the browser underlay matches app background
+    // Ensure browser underlay matches app background
     document.body.style.background = "var(--bg)";
+
+    // Push initial theme-color for iOS/Chrome UI
+    setThemeColorMeta(computeStatusBarColor());
+
+    // Keep theme-color synced if storage changes (Settings updates localStorage)
+    const onStorage = () => setThemeColorMeta(computeStatusBarColor());
+    window.addEventListener("storage", onStorage);
+
+    // Also update when focus returns (Safari sometimes needs a nudge)
+    const onFocus = () => setThemeColorMeta(computeStatusBarColor());
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
+  // When route changes, re-apply theme-color too (covers cases where Settings changes state locally)
+  useEffect(() => {
+    setThemeColorMeta(computeStatusBarColor());
+  }, [route]);
+
   return (
-    <div
-      className="min-h-screen relative overflow-hidden"
-    >
-      {/* Background enhancer layer */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-  {/* FULL-SCREEN ACCENT WASH */}
-  <div
-    className="absolute inset-0"
-    style={{
-      background: `
-        linear-gradient(
-          to bottom,
-          var(--accent-soft-strong),
-          transparent 65%
-        )
-      `,
-      opacity: 0.55,
-    }}
-  />
+    <div className="min-h-[100dvh] relative overflow-hidden">
+      {/* Background enhancer layer (full viewport, including safe areas) */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        {/* FULL-SCREEN ACCENT WASH */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+              linear-gradient(
+                to bottom,
+                var(--accent-soft-strong),
+                transparent 65%
+              )
+            `,
+            opacity: 0.55,
+          }}
+        />
 
-  {/* EXISTING RADIAL ACCENTS (keep these) */}
-  <div
-    className="absolute inset-0"
-    style={{
-      background:
-        "radial-gradient(900px 700px at 20% 12%, var(--accent-soft-strong), transparent 55%)," +
-        "radial-gradient(900px 700px at 80% 18%, var(--accent-soft-strong), transparent 58%)",
-      opacity: 0.9,
-    }}
-  />
+        {/* CENTER ACCENT BLOOM */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(1200px 900px at 50% 50%, var(--accent-soft-strong), transparent 58%)",
+            opacity: 0.8,
+          }}
+        />
 
-  {/* NOISE LAYER (keep last) */}
-  <div
-    className="absolute inset-0"
-    style={{
-      opacity: 0.08,
-      backgroundImage:
-        "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E\")",
-      mixBlendMode: "overlay",
-    }}
-  />
-</div>
+        {/* EDGE FADE BACK TO THEME BG (TOP/BOTTOM + subtle sides) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+      linear-gradient(to bottom, var(--bg) 0%, transparent 22%),
+      linear-gradient(to top,    var(--bg) 0%, transparent 22%),
+      linear-gradient(to right,  var(--bg) 0%, transparent 10%),
+      linear-gradient(to left,   var(--bg) 0%, transparent 10%)
+    `,
+            opacity: 1,
+          }}
+        />
+
+        {/* NOISE LAYER (keep last) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            opacity: 0.08,
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E\")",
+            mixBlendMode: "overlay",
+          }}
+        />
+      </div>
 
       {/* Content respects safe area */}
       <div className="pt-safe">

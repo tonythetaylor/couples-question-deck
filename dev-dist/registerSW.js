@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/couples-question-deck/dev-sw.js?dev-sw', { scope: '/couples-question-deck/', type: 'classic' })
