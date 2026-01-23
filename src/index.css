@@ -52,7 +52,7 @@
   --seg-selected-bg: var(--btn);
   --seg-selected-fg: var(--btn-fg);
 
-    /* Toggle track */
+  /* Toggle track */
   --toggle-track-off: color-mix(in srgb, var(--fg) 10%, transparent);
   --toggle-track-border: color-mix(in srgb, var(--fg) 12%, transparent);
 
@@ -107,7 +107,7 @@
   --seg-selected-bg: var(--btn);
   --seg-selected-fg: var(--btn-fg);
 
-    --toggle-track-off: rgba(255, 255, 255, 0.10);
+  --toggle-track-off: rgba(255, 255, 255, 0.10);
   --toggle-track-border: rgba(255, 255, 255, 0.12);
 
   /* Toggle ON (DARK MODE = light track) */
@@ -120,20 +120,47 @@
 }
 
 /* -------------------------
-   Base layout
+   Base layout + "app-like" scrolling (no visible scrollbar)
    ------------------------- */
 .pt-safe { padding-top: env(safe-area-inset-top); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
 html, body { height: 100%; }
 
+/* App-like behavior */
+html {
+  overflow: hidden;                 /* hide browser scrollbar on the page */
+  overscroll-behavior: none;        /* prevent rubber-band chaining */
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
+  height: 100%;
   background: var(--bg);
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+
+  overflow: hidden;                 /* body doesn't scroll */
+  overscroll-behavior: none;
 }
+
+/* Your React root scrolls instead (still scrollable, but no scrollbar) */
+#root {
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
+  overscroll-behavior: contain;
+  scrollbar-width: none;            /* Firefox */
+}
+#root::-webkit-scrollbar { width: 0; height: 0; } /* Chrome/Safari */
+
+/* Optional utility for any scroll containers you want "no bar" */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
 
 /* Background vibe */
 :root body {
@@ -277,7 +304,7 @@ body {
 }
 
 /* =========================
-   Home typography helpers (MOVED OUT of @media)
+   Home typography helpers
    ========================= */
 .sr-eyebrow {
   font-size: 12px;
