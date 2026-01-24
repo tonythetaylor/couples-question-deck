@@ -107,7 +107,7 @@
   --seg-selected-bg: var(--btn);
   --seg-selected-fg: var(--btn-fg);
 
-  --toggle-track-off: rgba(255, 255, 255, 0.10);
+  --toggle-track-off: rgba(255, 255, 255, 0.1);
   --toggle-track-border: rgba(255, 255, 255, 0.12);
 
   /* Toggle ON (DARK MODE = light track) */
@@ -119,18 +119,34 @@
   color-scheme: dark;
 }
 
+/* Prevent accidental text selection on interactive UI */
+.no-select {
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE/Edge */
+  user-select: none; /* Standard */
+
+  /* -webkit-touch-callout: none;  disables iOS copy menu */
+}
+
 /* -------------------------
    Base layout + "app-like" scrolling (no visible scrollbar)
    ------------------------- */
-.pt-safe { padding-top: env(safe-area-inset-top); }
-.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
-html, body { height: 100%; }
+html,
+body {
+  height: 100%;
+}
 
 /* App-like behavior */
 html {
-  overflow: hidden;                 /* hide browser scrollbar on the page */
-  overscroll-behavior: none;        /* prevent rubber-band chaining */
+  overflow: hidden; /* hide browser scrollbar on the page */
+  overscroll-behavior: none; /* prevent rubber-band chaining */
   -webkit-text-size-adjust: 100%;
 }
 
@@ -142,7 +158,7 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 
-  overflow: hidden;                 /* body doesn't scroll */
+  overflow: hidden; /* body doesn't scroll */
   overscroll-behavior: none;
 }
 
@@ -152,28 +168,54 @@ body {
   overflow: auto;
   -webkit-overflow-scrolling: touch; /* iOS momentum scroll */
   overscroll-behavior: contain;
-  scrollbar-width: none;            /* Firefox */
+  scrollbar-width: none; /* Firefox */
 }
-#root::-webkit-scrollbar { width: 0; height: 0; } /* Chrome/Safari */
+#root::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+} /* Chrome/Safari */
 
 /* Optional utility for any scroll containers you want "no bar" */
 .no-scrollbar {
   scrollbar-width: none;
 }
-.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
 
 /* Background vibe */
 :root body {
   background:
-    radial-gradient(1200px 700px at 50% -260px, rgba(15, 23, 42, 0.035), transparent 62%),
-    radial-gradient(900px 520px at 12% 12%, rgba(2, 132, 199, 0.055), transparent 58%),
-    radial-gradient(900px 520px at 88% 18%, rgba(16, 185, 129, 0.045), transparent 58%),
+    radial-gradient(
+      1200px 700px at 50% -260px,
+      rgba(15, 23, 42, 0.035),
+      transparent 62%
+    ),
+    radial-gradient(
+      900px 520px at 12% 12%,
+      rgba(2, 132, 199, 0.055),
+      transparent 58%
+    ),
+    radial-gradient(
+      900px 520px at 88% 18%,
+      rgba(16, 185, 129, 0.045),
+      transparent 58%
+    ),
     var(--bg);
 }
 .dark body {
   background:
-    radial-gradient(900px 500px at 50% -220px, rgba(255, 255, 255, 0.055), transparent 62%),
-    radial-gradient(900px 520px at 15% 10%, rgba(255, 255, 255, 0.028), transparent 58%),
+    radial-gradient(
+      900px 500px at 50% -220px,
+      rgba(255, 255, 255, 0.055),
+      transparent 62%
+    ),
+    radial-gradient(
+      900px 520px at 15% 10%,
+      rgba(255, 255, 255, 0.028),
+      transparent 58%
+    ),
     var(--bg);
 }
 
@@ -219,7 +261,9 @@ body {
     inset 0 -1px 0 var(--glass-inner),
     var(--glass-shadow);
 }
-.glass-strong { background-color: var(--glass-bg-strong); }
+.glass-strong {
+  background-color: var(--glass-bg-strong);
+}
 
 /* Focus ring (theme-first) */
 .glass-focus:focus-visible {
@@ -259,21 +303,35 @@ body {
     filter 160ms ease;
 }
 
-.btn:hover { filter: brightness(1.01); }
-.btn:active { transform: scale(0.985); }
-.btn:disabled { opacity: 0.45; pointer-events: none; filter: saturate(0.7); }
+.btn:hover {
+  filter: brightness(1.01);
+}
+.btn:active {
+  transform: scale(0.985);
+}
+.btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: saturate(0.7);
+}
 
 /* Primary = pure theme */
 .btn-primary {
   background: var(--btn);
   color: var(--btn-fg);
   border-color: var(--btn);
-  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.10);
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.1);
 }
-.dark .btn-primary { box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55); }
+.dark .btn-primary {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+}
 
-.btn-primary:hover { filter: brightness(1.03); }
-.btn-primary:active { box-shadow: 0 6px 14px rgba(2, 6, 23, 0.12); }
+.btn-primary:hover {
+  filter: brightness(1.03);
+}
+.btn-primary:active {
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.12);
+}
 
 /* Ghost = neutral */
 .btn-ghost {
@@ -364,7 +422,10 @@ body {
    Portrait-only guard fallback
    ========================= */
 @media (orientation: landscape) and (max-height: 500px) {
-  body { overflow: hidden; touch-action: none; }
+  body {
+    overflow: hidden;
+    touch-action: none;
+  }
   body::before {
     content: "Rotate back to portrait";
     position: fixed;
@@ -397,34 +458,34 @@ body {
 
   /* SharedTemplate */
   /* src/index.css (or a globals.css) */
-.line-clamp-5 {
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.line-clamp-6 {
-  display: -webkit-box;
-  -webkit-line-clamp: 6;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.line-clamp-7 {
-  display: -webkit-box;
-  -webkit-line-clamp: 7;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.line-clamp-4 {
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+  .line-clamp-5 {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-6 {
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-7 {
+    display: -webkit-box;
+    -webkit-line-clamp: 7;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }

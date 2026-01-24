@@ -1,15 +1,39 @@
+// src/pages/DeckPage/hooks/useShareImage.ts
 import { useEffect, useRef, useState } from "react";
 import { nodeToPngDataUrl } from "../../../lib/share/htmlToPng";
 import { isUserCancelledShare } from "../../../lib/share/shareGuards";
-import { safeSlug } from "../../../lib/share/slug";
 import { applyShareVars, getShareThemeVars } from "../../../lib/share/cssVars";
 
-export function useShareImage(params: {
-  getFilename: () => string;
-}) {
+function isTransparentLike(v?: string | null) {
+  if (!v) return true;
+  const s = v.trim().toLowerCase();
+  return (
+    !s ||
+    s === "transparent" ||
+    s === "rgba(0,0,0,0)" ||
+    s === "rgba(0, 0, 0, 0)" ||
+    s === "#0000" ||
+    s === "#00000000"
+  );
+}
+
+function pickSmokeyStoryBackground(theme: { bg?: string; accent?: string }) {
+  // If the theme provides a real bg, use it (solid fill)
+  if (!isTransparentLike(theme.bg)) return theme.bg!.trim();
+
+  // Otherwise, fall back to a solid fill based on accent presence
+  // (Solid is required because nodeToPngDataUrl "backgroundColor" cannot be a gradient.)
+  // The smokey gradient is handled INSIDE ShareTemplateStory via CSS background.
+  return theme.accent ? theme.accent : "#000000";
+}
+
+export function useShareImage(params: { getFilename: () => string }) {
   const { getFilename } = params;
 
-  const shareRef = useRef<HTMLDivElement | null>(null);
+  // ✅ two independent export surfaces
+  const storyRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
   const [sharing, setSharing] = useState(false);
   const [sharePreviewUrl, setSharePreviewUrl] = useState<string | null>(null);
   const [shareFilename, setShareFilename] = useState<string | null>(null);
@@ -26,18 +50,22 @@ export function useShareImage(params: {
     setShareFilename(null);
   }
 
-  async function sharePng() {
-    if (!shareRef.current) return;
+  async function shareStoryPng() {
+    const el = storyRef.current;
+    if (!el) return;
 
     closeSharePreview();
     setSharing(true);
 
     try {
       const theme = getShareThemeVars();
-      applyShareVars(shareRef.current, theme);
+      applyShareVars(el, theme);
 
-      // IMPORTANT: fills transparency behind rounded corners (IG black-corner fix)
-      const dataUrl = await nodeToPngDataUrl(shareRef.current, { backgroundColor: theme.bg });
+      // ✅ story needs a SOLID background fill for export compositing
+      // The smokey gradient is in the template CSS; this fill just avoids weird alpha behavior.
+      const backgroundColor = pickSmokeyStoryBackground(theme);
+
+      const dataUrl = await nodeToPngDataUrl(el, { backgroundColor });
 
       const res = await fetch(dataUrl);
       const blob = await res.blob();
@@ -70,13 +98,41 @@ export function useShareImage(params: {
     }
   }
 
+  async function saveCardPng() {
+    const el = cardRef.current;
+    if (!el) return;
+
+    closeSharePreview();
+    setSharing(true);
+
+    try {
+      const theme = getShareThemeVars();
+      applyShareVars(el, theme);
+
+      // ✅ card save: keep transparency outside rounded card
+      const dataUrl = await nodeToPngDataUrl(el, { backgroundColor: "transparent" });
+
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+
+      const objectUrl = URL.createObjectURL(blob);
+      setSharePreviewUrl(objectUrl);
+      setShareFilename(getFilename());
+    } catch (err) {
+      if (isUserCancelledShare(err)) return;
+    } finally {
+      setSharing(false);
+    }
+  }
+
   return {
-    shareRef,
+    storyRef,
+    cardRef,
     sharing,
     sharePreviewUrl,
     shareFilename,
     closeSharePreview,
-    sharePng,
-    safeSlug, // convenient export if you want it
+    sharePng: shareStoryPng, // keep your API name
+    saveCardPng,
   };
 }

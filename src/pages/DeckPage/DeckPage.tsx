@@ -23,6 +23,7 @@ import { DeckHeader } from "./components/DeckHeader";
 import { QuestionCard } from "./components/QuestionCard";
 import { ActionRow } from "./components/ActionRow";
 import { EndOfDeckCard } from "./components/EndOfDeckCard";
+import { ShareTemplateStory } from "./components/ShareTemplateStory";
 
 const MAX_SWAPS_PER_CARD = 1;
 const RECENT_COOLDOWN_LIMIT = 80;
@@ -46,19 +47,30 @@ export function DeckPage({ onExit }: { onExit: () => void }) {
 
   const deckUrl = `${window.location.origin}${import.meta.env.BASE_URL}`;
 
-  const { shareRef, sharing, sharePreviewUrl, shareFilename, closeSharePreview, sharePng } =
-    useShareImage({
-      getFilename: () => {
-        if (!current) return "shared-reality.png";
-        const safeCategory = safeSlug(CATEGORY_LABEL[current.category] ?? current.category);
-        return `shared-reality-${safeCategory}-${current.id}.png`;
-      },
-    });
+const {
+  storyRef,
+  cardRef,
+  sharing,
+  sharePreviewUrl,
+  shareFilename,
+  closeSharePreview,
+  sharePng,
+  saveCardPng,
+} = useShareImage({
+  getFilename: () => {
+    if (!current) return "shared-reality.png";
+    const safeCategory = safeSlug(CATEGORY_LABEL[current.category] ?? current.category);
+    return `shared-reality-${safeCategory}-${current.id}.png`;
+  },
+});
 
   async function handleNext() {
     if (!deck) return;
     if (deck.index >= deck.questions.length - 1) return;
-    await persist({ ...deck, index: Math.min(deck.index + 1, deck.questions.length - 1) });
+    await persist({
+      ...deck,
+      index: Math.min(deck.index + 1, deck.questions.length - 1),
+    });
   }
 
   async function handlePrev() {
@@ -75,7 +87,9 @@ export function DeckPage({ onExit }: { onExit: () => void }) {
 
     const swapped = swapQuestion(deck, QUESTIONS);
     const swappedCurrent = swapped.questions[swapped.index];
-    const withRecent = swappedCurrent ? withRecentIds(swapped, [swappedCurrent.id], RECENT_COOLDOWN_LIMIT) : swapped;
+    const withRecent = swappedCurrent
+      ? withRecentIds(swapped, [swappedCurrent.id], RECENT_COOLDOWN_LIMIT)
+      : swapped;
 
     const next: Deck = {
       ...(withRecent as any),
@@ -119,7 +133,10 @@ export function DeckPage({ onExit }: { onExit: () => void }) {
     return (
       <div className="mx-auto max-w-md px-4 py-6">
         <Card>
-          <div className="text-sm font-semibold" style={{ color: "var(--muted)" }}>
+          <div
+            className="text-sm font-semibold"
+            style={{ color: "var(--muted)" }}
+          >
             No active deck.
           </div>
           <div className="mt-3">
@@ -148,9 +165,22 @@ export function DeckPage({ onExit }: { onExit: () => void }) {
         onExit={onExit}
       />
 
-      <ShareTemplate deck={deck} current={current} deckUrl={deckUrl} shareRef={shareRef} />
+{/* Card-only export surface (1080x1080, transparent outside corners) */}
+<div aria-hidden className="fixed -left-[9999px] top-0 pointer-events-none opacity-0">
+  <div ref={cardRef}>
+    <ShareTemplate deck={deck} current={current} deckUrl={deckUrl} />
+  </div>
+</div>
 
-      <QuestionCard current={current} />
+{/* Story export surface (1080x1920 smokey background) */}
+<ShareTemplateStory
+  deck={deck}
+  current={current}
+  deckUrl={deckUrl}
+  shareRef={storyRef}
+/>
+
+      <QuestionCard current={current} onLongPressSave={saveCardPng} />
 
       <ActionRow
         canPrev={deck.index > 0}
