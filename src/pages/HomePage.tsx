@@ -223,20 +223,31 @@ export function HomePage({ onStart }: { onStart: () => void }) {
 
   const whatsInside = useMemo(() => {
     const defaults: Category[] = [
+      // Core relationship foundations
       "intent",
       "accountability",
       "communication",
       "regulation",
-      "money",
-      "repair",
       "values",
+      "repair",
+      "money",
       "humor",
+
+      // Deeper relational layers
       "trust",
       "boundaries",
       "co_living",
       "intimacy",
+
+      // Family & lifecycle
       "parenting_family",
+      "adult_parent",
+      "marriage",
       "breakup_exit",
+
+      // Personal wellbeing
+      "health_wellness",
+      "fitness_goals",
     ];
 
     const list = selectedCategories.length ? selectedCategories : defaults;
@@ -246,8 +257,8 @@ export function HomePage({ onStart }: { onStart: () => void }) {
   const pickedCount = selectedCategories.length;
 
   return (
-<div className="mx-auto max-w-md px-4 pt-6 space-y-4">
-        {/* Header */}
+    <div className="mx-auto max-w-md px-4 pt-6 space-y-4">
+      {/* Header */}
       <header className="space-y-3">
         {/* Eyebrow / mode */}
         <div
@@ -543,6 +554,7 @@ export function HomePage({ onStart }: { onStart: () => void }) {
                 <option value="gentle">Gentle</option>
                 <option value="neutral">Neutral</option>
                 <option value="direct">Direct</option>
+                <option value="reflective">Reflective</option>
               </select>
             </div>
 

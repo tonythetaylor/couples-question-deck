@@ -12,6 +12,10 @@ import { TRUST_QUESTIONS_APPEND } from "./trust";
 import { INTIMACY_QUESTIONS_APPEND } from "./intimacy";
 import { BREAKUP_EXIT_QUESTIONS_APPEND } from "./breakup_exit";
 import { PARENTING_FAMILY_QUESTIONS_APPEND } from "./parenting_family";
+import { ADULT_PARENT_QUESTIONS } from "./adultParent";
+import { MARRIAGE_QUESTIONS } from "./marriage";
+import { HEALTH_WELLNESS_QUESTIONS } from "./healthWellness";
+import { FITNESS_GOALS_QUESTIONS } from "./fitnessGoals";
 
 export const QUESTIONS: Question[] = [
   // 1) Intent
@@ -1520,4 +1524,8 @@ export const QUESTIONS: Question[] = [
   ...INTIMACY_QUESTIONS_APPEND,
   ...BREAKUP_EXIT_QUESTIONS_APPEND,
   ...PARENTING_FAMILY_QUESTIONS_APPEND,
+    ...ADULT_PARENT_QUESTIONS,
+  ...MARRIAGE_QUESTIONS,
+  ...HEALTH_WELLNESS_QUESTIONS,
+  ...FITNESS_GOALS_QUESTIONS,
 ];

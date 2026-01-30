@@ -1,3 +1,4 @@
+// src/components/CategoryPicker.tsx
 import { useMemo, useState } from "react";
 import type { Category } from "../domain/types";
 
@@ -19,12 +20,18 @@ const CATEGORY_LABELS: Record<Category, string> = {
   values: "Values",
   humor: "Humor",
   anchor: "Anchor",
+
   boundaries: "Boundaries",
   co_living: "Co-living",
   trust: "Trust",
   intimacy: "Intimacy",
   parenting_family: "Parenting",
   breakup_exit: "Exit clarity",
+
+  adult_parent: "Adult + Parent",
+  marriage: "Marriage",
+  health_wellness: "Health + Wellness",
+  fitness_goals: "Fitness Goals",
 };
 
 const CATEGORY_HINTS: Partial<Record<Category, string>> = {
@@ -34,8 +41,13 @@ const CATEGORY_HINTS: Partial<Record<Category, string>> = {
   intimacy: "Affection, consent, closeness.",
   parenting_family: "Family systems and roles.",
   breakup_exit: "If it ends, how do we do it well?",
+  adult_parent: "Grown-up boundaries with the people who raised you.",
+  marriage: "Long-game partnership, upkeep, and re-choosing each other.",
+  health_wellness: "Body, mind, stress, rest, and support.",
+  fitness_goals: "Consistency, identity, habits, and accountability.",
 };
 
+// “Surface” categories
 const CORE: Category[] = [
   "intent",
   "values",
@@ -45,8 +57,11 @@ const CORE: Category[] = [
   "repair",
   "money",
   "humor",
+  "health_wellness",
+  "fitness_goals",
 ];
 
+// “Underneath” categories
 const DEEP: Category[] = [
   "trust",
   "boundaries",
@@ -54,6 +69,8 @@ const DEEP: Category[] = [
   "intimacy",
   "parenting_family",
   "breakup_exit",
+  "adult_parent",
+  "marriage",
 ];
 
 function uniq<T>(arr: T[]) {
@@ -79,34 +96,71 @@ function Chip({
       onClick={onClick}
       aria-pressed={active}
       title={hint ? `${label}: ${hint}` : label}
-      className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[12px] font-extrabold transition active:scale-[0.99]"
+      className="group flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-[12px] font-extrabold transition active:scale-[0.99]"
       style={{
         background: active
           ? "var(--seg-selected-bg)"
-          : "color-mix(in srgb, var(--fg) 4%, transparent)",
+          : "color-mix(in srgb, var(--fg) 3.5%, transparent)",
         color: active ? "var(--seg-selected-fg)" : "var(--fg)",
-        border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+        border: active
+          ? "1px solid color-mix(in srgb, var(--seg-selected-fg) 18%, transparent)"
+          : "1px solid color-mix(in srgb, var(--fg) 9%, transparent)",
         boxShadow: active
           ? "inset 0 1px 0 var(--glass-highlight), inset 0 -1px 0 var(--glass-inner)"
           : "none",
       }}
     >
-      <span>{label}</span>
+      <span className="leading-tight">{label}</span>
 
       {typeof count === "number" && (
         <span
-          className="rounded-full px-2 py-[2px] text-[10px] font-extrabold"
+          className="shrink-0 rounded-full px-2 py-[2px] text-[10px] font-extrabold"
           style={{
             background: active
               ? "color-mix(in srgb, var(--seg-selected-fg) 14%, transparent)"
-              : "color-mix(in srgb, var(--fg) 8%, transparent)",
+              : "color-mix(in srgb, var(--fg) 7%, transparent)",
             color: active ? "var(--seg-selected-fg)" : "var(--muted)",
-            border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--fg) 9%, transparent)",
+            opacity: 0.92,
           }}
         >
           {count}
         </span>
       )}
+    </button>
+  );
+}
+
+function SmallPill({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-extrabold transition active:scale-[0.99]"
+      style={{
+        background: "color-mix(in srgb, var(--fg) 6%, transparent)",
+        color: "var(--fg)",
+        border: "1px solid color-mix(in srgb, var(--fg) 12%, transparent)",
+      }}
+      title="Remove"
+    >
+      <span>{label}</span>
+      <span
+        aria-hidden
+        className="grid place-items-center rounded-full w-5 h-5 text-[12px]"
+        style={{
+          background: "color-mix(in srgb, var(--fg) 10%, transparent)",
+          color: "var(--muted)",
+        }}
+      >
+        ×
+      </span>
     </button>
   );
 }
@@ -120,14 +174,22 @@ export function CategoryPicker({
 }: Props) {
   const hiddenSet = useMemo(() => new Set(hidden), [hidden]);
 
-  const coreCats = useMemo(() => CORE.filter((c) => !hiddenSet.has(c)), [hiddenSet]);
-  const deepCats = useMemo(() => DEEP.filter((c) => !hiddenSet.has(c)), [hiddenSet]);
-  const allCats = useMemo(() => uniq([...coreCats, ...deepCats]), [coreCats, deepCats]);
+  const coreCats = useMemo(
+    () => CORE.filter((c) => !hiddenSet.has(c)),
+    [hiddenSet],
+  );
+  const deepCats = useMemo(
+    () => DEEP.filter((c) => !hiddenSet.has(c)),
+    [hiddenSet],
+  );
+  const allCats = useMemo(
+    () => uniq([...coreCats, ...deepCats]),
+    [coreCats, deepCats],
+  );
 
-  const selected = useMemo(() => new Set(value), [value]);
+  const selectedSet = useMemo(() => new Set(value), [value]);
   const anySelected = value.length > 0;
 
-  // Filter = view only (does NOT change selection)
   const [filter, setFilter] = useState<"all" | "core" | "deep">("all");
 
   const visibleCats = useMemo(() => {
@@ -142,10 +204,14 @@ export function CategoryPicker({
     onChange(Array.from(next));
   };
 
-  const selectAll = () => onChange(allCats);
+  const selectAllVisible = () => {
+    const next = new Set(value);
+    for (const c of visibleCats) next.add(c);
+    onChange(Array.from(next));
+  };
+
   const clearAll = () => onChange([]);
 
-  // Nice tiny label style (homepage-y)
   const labelStyle: React.CSSProperties = {
     fontSize: 11,
     fontWeight: 800,
@@ -168,115 +234,151 @@ export function CategoryPicker({
     opacity: active ? 1 : 0.9,
   });
 
-return (
+  return (
     <div className="space-y-4">
       {showHeader && (
         <div className="space-y-1">
           <div style={labelStyle}>Categories</div>
-          <div className="text-sm font-extrabold" style={{ color: "var(--fg)" }}>
+          <div
+            className="text-sm font-extrabold"
+            style={{ color: "var(--fg)" }}
+          >
             Choose what you want to touch
           </div>
           <div className="text-[11px]" style={{ color: "var(--muted)" }}>
-            Multi-select. Empty means the deck can pull from anywhere.
+            Empty means the deck can pull from anywhere.
           </div>
         </div>
       )}
 
-      {/* LAYERS (view only) */}
+      {/* TOP BAR: Layers + actions (single row, less stacking) */}
       <div className="space-y-2">
-        <div style={labelStyle}>Layers</div>
+        <div className="flex items-center justify-between">
+          <div style={labelStyle}>Layer</div>
+          <div className="text-[11px]" style={{ color: "var(--muted)" }}>
+            {anySelected ? `${value.length} selected` : "Any"}
+          </div>
+        </div>
 
-        <div className="grid grid-cols-3 gap-1 rounded-2xl p-1" style={segWrapStyle}>
+        <div className="flex items-center gap-2">
+          <div
+            className="grid grid-cols-3 gap-1 rounded-2xl p-1 flex-1"
+            style={segWrapStyle}
+          >
+            <button
+              type="button"
+              onClick={() => setFilter("all")}
+              aria-pressed={filter === "all"}
+              className="h-8 rounded-xl text-[12px] font-extrabold transition"
+              style={segBtn(filter === "all")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("core")}
+              aria-pressed={filter === "core"}
+              className="h-8 rounded-xl text-[12px] font-extrabold transition"
+              style={segBtn(filter === "core")}
+            >
+              Surface
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("deep")}
+              aria-pressed={filter === "deep"}
+              className="h-8 rounded-xl text-[12px] font-extrabold transition"
+              style={segBtn(filter === "deep")}
+            >
+              Underneath
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setFilter("all")}
-            aria-pressed={filter === "all"}
-            className="h-8 rounded-xl text-[12px] font-extrabold transition"
-            style={segBtn(filter === "all")}
+            onClick={selectAllVisible}
+            className="h-10 px-3 rounded-2xl text-[12px] font-extrabold transition"
+            style={{
+              background: "color-mix(in srgb, var(--fg) 4%, transparent)",
+              color: "var(--fg)",
+              border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+            }}
+            title="Select all in this layer"
           >
             All
           </button>
 
           <button
             type="button"
-            onClick={() => setFilter("core")}
-            aria-pressed={filter === "core"}
-            className="h-8 rounded-xl text-[12px] font-extrabold transition"
-            style={segBtn(filter === "core")}
+            onClick={clearAll}
+            className="h-10 px-3 rounded-2xl text-[12px] font-extrabold transition"
+            style={{
+              background: "transparent",
+              color: "var(--muted)",
+              border: "1px solid color-mix(in srgb, var(--fg) 10%, transparent)",
+            }}
+            title="Clear selected categories"
           >
-            Surface
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilter("deep")}
-            aria-pressed={filter === "deep"}
-            className="h-8 rounded-xl text-[12px] font-extrabold transition"
-            style={segBtn(filter === "deep")}
-          >
-            Underneath
+            None
           </button>
         </div>
 
         <div className="text-[11px]" style={{ color: "var(--muted)" }}>
           {filter === "core"
-            ? "Start light. Clarity, communication, values, and everyday truth."
+            ? "Start light: clarity, values, everyday truth."
             : filter === "deep"
-              ? "Higher stakes. Trust, boundaries, intimacy, co-living, and exit clarity."
-              : "Browse everything. Your selection doesn’t change."}
+              ? "Higher stakes: trust, boundaries, intimacy, family."
+              : "Browse everything. Selection is separate."}
         </div>
       </div>
 
-      {/* SELECTION (selection only) */}
-      <div className="space-y-2">
-        <div style={labelStyle}>Selection</div>
+      {/* SELECTED: visible + removable (reduces “what did I pick?” mental load) */}
+      {anySelected && (
+        <div className="space-y-2">
+          <div style={labelStyle}>Selected</div>
+          <div className="flex flex-wrap gap-2">
+            {value
+              .slice()
+              .sort((a, b) =>
+                CATEGORY_LABELS[a].localeCompare(CATEGORY_LABELS[b]),
+              )
+              .map((cat) => (
+                <SmallPill
+                  key={cat}
+                  label={CATEGORY_LABELS[cat]}
+                  onRemove={() => toggle(cat)}
+                />
+              ))}
+          </div>
+        </div>
+      )}
 
-        <div className="grid grid-cols-2 gap-1 rounded-2xl p-1" style={segWrapStyle}>
-          <button
-            type="button"
-            onClick={selectAll}
-            className="h-8 rounded-xl text-[12px] font-extrabold transition"
-            style={segBtn(anySelected && value.length === allCats.length)}
-            title="Select all categories"
-          >
-            Select all
-          </button>
-          <button
-            type="button"
-            onClick={clearAll}
-            className="h-8 rounded-xl text-[12px] font-extrabold transition"
-            style={segBtn(!anySelected)}
-            title="Clear selected categories"
-          >
-            Clear all
-          </button>
+      {/* CHIPS: grid instead of wrap (cleaner, less “pile”) */}
+      <div className="space-y-2">
+        <div style={labelStyle}>
+          {filter === "core"
+            ? "Surface"
+            : filter === "deep"
+              ? "Underneath"
+              : "All categories"}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {visibleCats.map((cat) => (
+            <Chip
+              key={cat}
+              label={CATEGORY_LABELS[cat]}
+              hint={CATEGORY_HINTS[cat]}
+              count={counts?.[cat]}
+              active={selectedSet.has(cat)}
+              onClick={() => toggle(cat)}
+            />
+          ))}
         </div>
 
         <div className="text-[11px]" style={{ color: "var(--muted)" }}>
-          Empty selection means “surprise me.”
+          Tip: leave selection empty for “surprise me.”
         </div>
-      </div>
-
-      {/* CHIPS */}
-      <div className="flex flex-wrap gap-2">
-        {visibleCats.map((cat) => (
-          <Chip
-            key={cat}
-            label={CATEGORY_LABELS[cat]}
-            hint={CATEGORY_HINTS[cat]}
-            count={counts?.[cat]}
-            active={selected.has(cat)}
-            onClick={() => toggle(cat)}
-          />
-        ))}
-      </div>
-
-      {/* FOOTER */}
-      <div className="flex justify-between text-[11px]" style={{ color: "var(--muted)" }}>
-        <span>Selected</span>
-        <span style={{ color: "var(--fg)", fontWeight: 800 }}>
-          {value.length ? `${value.length} picked` : "Any"}
-        </span>
       </div>
     </div>
   );

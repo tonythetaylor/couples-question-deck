@@ -13,9 +13,13 @@ export type Category =
   | "trust"
   | "intimacy"
   | "parenting_family"
-  | "breakup_exit";
+  | "breakup_exit"
+  | "adult_parent"
+  | "marriage"
+  | "health_wellness"
+  | "fitness_goals"
 
-export type Tone = "gentle" | "neutral" | "direct";
+export type Tone = "gentle" | "neutral" | "direct" | "reflective";
 
 export type Question = {
   id: string;

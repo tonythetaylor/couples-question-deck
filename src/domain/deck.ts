@@ -1,3 +1,4 @@
+// src/domain/deck.ts
 import type { Category, Deck, DeckOptions, Question } from "./types";
 
 type NonAnchorCategory = Exclude<Category, "anchor">;
@@ -30,7 +31,7 @@ function pickN<T>(arr: T[], n: number) {
 function pickNWithCooldown<T extends { id: string }>(
   candidates: T[],
   n: number,
-  recentIds: Set<string>
+  recentIds: Set<string>,
 ) {
   if (n <= 0 || candidates.length === 0) return [];
 
@@ -85,6 +86,12 @@ const EMPTY_MIX: Record<Category, number> = {
   breakup_exit: 0,
 
   anchor: 0,
+
+  // new
+  adult_parent: 0,
+  marriage: 0,
+  health_wellness: 0,
+  fitness_goals: 0,
 };
 
 const PRIORITY_ORDER: NonAnchorCategory[] = [
@@ -104,6 +111,11 @@ const PRIORITY_ORDER: NonAnchorCategory[] = [
   "intimacy",
   "parenting_family",
   "breakup_exit",
+  // new
+  "adult_parent",
+  "marriage",
+  "health_wellness",
+  "fitness_goals",
 ];
 
 function clampInt(n: number, min: number, max: number) {
@@ -130,6 +142,47 @@ function baselineForSize(size: number) {
 }
 
 /**
+ * Baseline “seed profile” (5/8/12) used by computeDefaultMix.
+ * This matches your requested baseline behavior exactly.
+ */
+function applyBaselineProfile(base: Record<Category, number>, baseline: number) {
+  // reset all non-anchor counts
+  for (const k of Object.keys(base) as Category[]) {
+    if (k !== "anchor") base[k] = 0;
+  }
+
+  if (baseline === 5) {
+    base.intent = 1;
+    base.accountability = 1;
+    base.communication = 1;
+    base.regulation = 1;
+    base.money = 1;
+    return;
+  }
+
+  if (baseline === 8) {
+    base.intent = 2;
+    base.accountability = 1;
+    base.communication = 1;
+    base.regulation = 1;
+    base.money = 1;
+    base.repair = 1;
+    base.humor = 1;
+    return;
+  }
+
+  // baseline 12+ default
+  base.intent = 2;
+  base.accountability = 2;
+  base.communication = 2;
+  base.regulation = 2;
+  base.money = 1;
+  base.repair = 1;
+  base.values = 1;
+  base.humor = 1;
+}
+
+/**
  * Default mix when user did NOT pick categories.
  * Works for ANY size.
  * Anchor handled separately so it can never be accidentally sliced out.
@@ -137,7 +190,7 @@ function baselineForSize(size: number) {
 function computeDefaultMix(
   sizeInput: number,
   weights?: Partial<Record<Category, number>>,
-  reservedSlots = 0
+  reservedSlots = 0,
 ) {
   const size = normalizeSize(sizeInput);
   const target = Math.max(0, size - reservedSlots);
@@ -147,31 +200,7 @@ function computeDefaultMix(
 
   // start from a baseline profile (5/8/12) then “grow” it
   const baseline = baselineForSize(size);
-
-  if (baseline === 5) {
-    base.intent = 1;
-    base.accountability = 1;
-    base.communication = 1;
-    base.regulation = 1;
-    base.money = 1;
-  } else if (baseline === 8) {
-    base.intent = 2;
-    base.accountability = 1;
-    base.communication = 1;
-    base.regulation = 1;
-    base.money = 1;
-    base.repair = 1;
-    base.humor = 1;
-  } else {
-    base.intent = 2;
-    base.accountability = 2;
-    base.communication = 2;
-    base.regulation = 2;
-    base.money = 1;
-    base.repair = 1;
-    base.values = 1;
-    base.humor = 1;
-  }
+  applyBaselineProfile(base, baseline);
 
   // If baseline overshoots (possible with very small target), reduce.
   let total = Object.entries(base)
@@ -181,19 +210,28 @@ function computeDefaultMix(
   let over = Math.max(0, total - target);
   if (over > 0) {
     const reductionOrder: NonAnchorCategory[] = [
+      // shave “nice-to-haves” first
       "humor",
       "values",
       "repair",
       "money",
+
+      // then core pillars
       "regulation",
       "communication",
       "accountability",
       "intent",
+
+      // then deeper/optional domains
       "trust",
       "boundaries",
       "co_living",
       "intimacy",
       "parenting_family",
+      "adult_parent",
+      "marriage",
+      "health_wellness",
+      "fitness_goals",
       "breakup_exit",
     ];
 
@@ -257,14 +295,14 @@ function computeSelectedMix(
   sizeInput: number,
   allowedCategories: Category[],
   weights?: Partial<Record<Category, number>>,
-  reservedSlots = 0
+  reservedSlots = 0,
 ) {
   const size = normalizeSize(sizeInput);
   const target = Math.max(0, size - reservedSlots);
   const base: Record<Category, number> = { ...EMPTY_MIX };
 
   const allowed: NonAnchorCategory[] = Array.from(
-    new Set(allowedCategories.filter((c): c is NonAnchorCategory => c !== "anchor"))
+    new Set(allowedCategories.filter((c): c is NonAnchorCategory => c !== "anchor")),
   );
 
   if (allowed.length === 0 || target === 0) return base;
@@ -308,7 +346,7 @@ export function generateDeck(all: Question[], options: DeckOptions): Deck {
   const toneOk = (q: Question) =>
     options.tone === "mixed" ? true : q.tone === options.tone || q.tone === "neutral";
 
-  const tagOk = (q: Question) => !q.tags.some((t) => options.excludeTags.includes(t));
+  const tagOk = (q: Question) => !(q.tags ?? []).some((t) => (options.excludeTags ?? []).includes(t));
 
   // Anchor: separate, never blocked by category selection
   const includeAnchor = size >= 8;
@@ -386,7 +424,7 @@ export function swapQuestion(deck: Deck, all: Question[]): Deck {
       ? true
       : q.tone === deck.options.tone || q.tone === "neutral";
 
-  const tagOk = (q: Question) => !q.tags.some((t) => deck.options.excludeTags.includes(t));
+  const tagOk = (q: Question) => !(q.tags ?? []).some((t) => (deck.options.excludeTags ?? []).includes(t));
 
   const categoryOk = (q: Question) => {
     if (q.category === "anchor") return false;
@@ -397,7 +435,7 @@ export function swapQuestion(deck: Deck, all: Question[]): Deck {
   const baseOk = (q: Question) => toneOk(q) && tagOk(q) && categoryOk(q) && !excludeIds.has(q.id);
 
   const tier1 = all.filter(
-    (q) => baseOk(q) && q.category === current.category && q.intensity === current.intensity
+    (q) => baseOk(q) && q.category === current.category && q.intensity === current.intensity,
   );
   const tier2 = all.filter((q) => baseOk(q) && q.category === current.category);
   const tier3 = all.filter((q) => baseOk(q));

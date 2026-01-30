@@ -47,22 +47,24 @@ export function DeckPage({ onExit }: { onExit: () => void }) {
 
   const deckUrl = `${window.location.origin}${import.meta.env.BASE_URL}`;
 
-const {
-  storyRef,
-  cardRef,
-  sharing,
-  sharePreviewUrl,
-  shareFilename,
-  closeSharePreview,
-  sharePng,
-  saveCardPng,
-} = useShareImage({
-  getFilename: () => {
-    if (!current) return "shared-reality.png";
-    const safeCategory = safeSlug(CATEGORY_LABEL[current.category] ?? current.category);
-    return `shared-reality-${safeCategory}-${current.id}.png`;
-  },
-});
+  const {
+    storyRef,
+    cardRef,
+    sharing,
+    sharePreviewUrl,
+    shareFilename,
+    closeSharePreview,
+    sharePng,
+    saveCardPng,
+  } = useShareImage({
+    getFilename: () => {
+      if (!current) return "shared-reality.png";
+      const safeCategory = safeSlug(
+        CATEGORY_LABEL[current.category] ?? current.category,
+      );
+      return `shared-reality-${safeCategory}-${current.id}.png`;
+    },
+  });
 
   async function handleNext() {
     if (!deck) return;
@@ -165,20 +167,23 @@ const {
         onExit={onExit}
       />
 
-{/* Card-only export surface (1080x1080, transparent outside corners) */}
-<div aria-hidden className="fixed -left-[9999px] top-0 pointer-events-none opacity-0">
-  <div ref={cardRef}>
-    <ShareTemplate deck={deck} current={current} deckUrl={deckUrl} />
-  </div>
-</div>
+      {/* Card-only export surface (1080x1080, transparent outside corners) */}
+      <div
+        aria-hidden
+        className="fixed -left-[9999px] top-0 pointer-events-none opacity-0"
+      >
+        <div ref={cardRef}>
+          <ShareTemplate deck={deck} current={current} deckUrl={deckUrl} />
+        </div>
+      </div>
 
-{/* Story export surface (1080x1920 smokey background) */}
-<ShareTemplateStory
-  deck={deck}
-  current={current}
-  deckUrl={deckUrl}
-  shareRef={storyRef}
-/>
+      {/* Story export surface (1080x1920 smokey background) */}
+      <ShareTemplateStory
+        deck={deck}
+        current={current}
+        deckUrl={deckUrl}
+        shareRef={storyRef}
+      />
 
       <QuestionCard current={current} onLongPressSave={saveCardPng} />
 
